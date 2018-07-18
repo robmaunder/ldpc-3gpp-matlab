@@ -46,8 +46,11 @@ classdef NRLDPCDecoder < matlab.System
         
         function setupImpl(obj)
             H=get_pcm(get_3gpp_base_graph(obj.BG,get_3gpp_set_index(obj.Z)),obj.Z);
-%            obj.hDec = comm.gpu.LDPCDecoder('ParityCheckMatrix',H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
-            obj.hDec = comm.LDPCDecoder('ParityCheckMatrix',H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+            try
+                obj.hDec = comm.gpu.LDPCDecoder('ParityCheckMatrix',H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+            catch
+                obj.hDec = comm.LDPCDecoder('ParityCheckMatrix',H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+            end
         end
         
         function out = stepImpl(obj, in)
