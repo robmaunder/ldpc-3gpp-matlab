@@ -5,13 +5,14 @@ classdef NRLDPCEncoder < matlab.System
         Z = 2; % Default value
     end
     
-    properties(SetAccess = private)
+    properties(Access = private, Hidden)
         hEnc
     end
     
     properties(Dependent)
         K
         N
+        ParityCheckMatrix
     end
     
     methods
@@ -37,6 +38,10 @@ classdef NRLDPCEncoder < matlab.System
             else
                 error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
             end
+        end       
+        
+        function ParityCheckMatrix = get.ParityCheckMatrix(obj)
+            ParityCheckMatrix = get_pcm(get_3gpp_base_graph(obj.BG,get_3gpp_set_index(obj.Z)),obj.Z);
         end        
     end
     
@@ -44,8 +49,7 @@ classdef NRLDPCEncoder < matlab.System
     methods(Access = protected)
         
         function setupImpl(obj)
-            H=get_pcm(get_3gpp_base_graph(obj.BG,get_3gpp_set_index(obj.Z)),obj.Z);
-            obj.hEnc = comm.LDPCEncoder('ParityCheckMatrix',H);
+            obj.hEnc = comm.LDPCEncoder('ParityCheckMatrix',obj.ParityCheckMatrix);
         end
         
         function out = stepImpl(obj, in)

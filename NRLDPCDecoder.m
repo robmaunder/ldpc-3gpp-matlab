@@ -6,13 +6,14 @@ classdef NRLDPCDecoder < matlab.System
         iterations = 50; % Default value
     end
  
-    properties(SetAccess = private)
+    properties(Access = private, Hidden)
          hDec
     end
     
     properties(Dependent)
         K
         N
+        ParityCheckMatrix
     end
     
     methods
@@ -39,17 +40,19 @@ classdef NRLDPCDecoder < matlab.System
                 error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
             end
         end
-        
+                
+        function ParityCheckMatrix = get.ParityCheckMatrix(obj)
+            ParityCheckMatrix = get_pcm(get_3gpp_base_graph(obj.BG,get_3gpp_set_index(obj.Z)),obj.Z);
+        end        
     end
     
     methods(Access = protected)
         
         function setupImpl(obj)
-            H=get_pcm(get_3gpp_base_graph(obj.BG,get_3gpp_set_index(obj.Z)),obj.Z);
             try
-                obj.hDec = comm.gpu.LDPCDecoder('ParityCheckMatrix',H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+                obj.hDec = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
             catch
-                obj.hDec = comm.LDPCDecoder('ParityCheckMatrix',H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+                obj.hDec = comm.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
             end
         end
         
