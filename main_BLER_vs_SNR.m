@@ -84,14 +84,10 @@ for BG_index = 1:length(BG)
         
         % Skip any encoded block lengths that generate errors
         try
-            
-            H=get_pcm(get_3gpp_base_graph(BG(BG_index),get_3gpp_set_index(Z(Z_index))),Z(Z_index));
-%            hEnc = comm.LDPCEncoder('ParityCheckMatrix',H);
-%            hDec = comm.LDPCDecoder('ParityCheckMatrix',H,'MaximumIterationCount',iterations,'IterationTerminationCondition','Parity check satisfied');
 
             hEnc = NRLDPCEncoder('BG',BG(BG_index),'Z',Z(Z_index));            
             hDec = NRLDPCDecoder('BG',BG(BG_index),'Z',Z(Z_index),'iterations',iterations);
-            K = size(H,2)-size(H,1);
+            K = hEnc.K;
             
             % Loop over the SNRs
             while BLER > target_BLER
