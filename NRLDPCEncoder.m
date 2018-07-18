@@ -9,10 +9,12 @@ classdef NRLDPCEncoder < matlab.System
         hEnc
     end
     
-    properties(Dependent)
+    properties(Dependent, SetAccess = private)
+        SetIndex
+        BaseGraph
+        ParityCheckMatrix
         K
         N
-        ParityCheckMatrix
     end
     
     methods
@@ -20,6 +22,30 @@ classdef NRLDPCEncoder < matlab.System
             setProperties(obj,nargin,varargin{:});
         end
                
+        function set.BG(obj, BG)
+            if BG ~= 1 && BG ~= 2
+                error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
+            end
+            obj.BG = BG;
+        end
+        
+        function set.Z(obj, Z)
+            get_3gpp_set_index(Z); % Test if Z is valid
+            obj.Z = Z;
+        end
+        
+        function SetIndex = get.SetIndex(obj)
+            SetIndex = get_3gpp_set_index(obj.Z);
+        end
+        
+        function BaseGraph = get.BaseGraph(obj)
+            BaseGraph = get_3gpp_base_graph(obj.BG,obj.SetIndex);
+        end
+        
+        function ParityCheckMatrix = get.ParityCheckMatrix(obj)
+            ParityCheckMatrix = get_pcm(obj.BaseGraph,obj.Z);
+        end        
+        
         function K = get.K(obj)
             if obj.BG == 1
                 K = obj.Z*22;
@@ -40,9 +66,6 @@ classdef NRLDPCEncoder < matlab.System
             end
         end       
         
-        function ParityCheckMatrix = get.ParityCheckMatrix(obj)
-            ParityCheckMatrix = get_pcm(get_3gpp_base_graph(obj.BG,get_3gpp_set_index(obj.Z)),obj.Z);
-        end        
     end
     
     
@@ -59,5 +82,6 @@ classdef NRLDPCEncoder < matlab.System
         function resetImpl(obj)
             % Initialize / reset discrete-state properties
         end
+        
     end
 end

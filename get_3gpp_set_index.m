@@ -17,7 +17,7 @@ while i_LS < 8 && isempty(find(valid_lifting_sizes{i_LS+1}==Z, 1))
     i_LS = i_LS+1;
 end
 if i_LS == 8
-    error("Invalid combination of set_index and lifting_size.");
+    error('ldpc_3gpp_matlab:UnsupportedLifingSize','Invalid lifting size.');
 end
 
 end
