@@ -1,4 +1,4 @@
-function main_BLER_vs_SNR(BG, Z, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function main_BLER_vs_SNR(BG, Z_c, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % MAIN_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
 % Ratio (SNR) for 3GPP New Radio LDPC code.
 %   target_block_errors should be an integer scalar. The simulation of each
@@ -29,11 +29,11 @@ function main_BLER_vs_SNR(BG, Z, iterations, target_block_errors, target_BLER, E
 % Default values
 if nargin == 0
     BG = 1;
-    Z = 2;
+    Z_c = 2;
     iterations = 50;
     target_block_errors = 10;
     target_BLER = 1e-3;
-    EsN0_start = -3;
+    EsN0_start = -10;
     EsN0_delta = 0.5;
     seed = 0;
 end
@@ -58,11 +58,11 @@ for BG_index = 1:length(BG)
     drawnow
     
     % Consider each lifting size in turn
-    for Z_index = 1:length(Z)
+    for Z_index = 1:length(Z_c)
         
         % Create the plot
         plot1 = plot(nan,'Parent',axes1);
-        legend(cellstr(num2str(Z(1:Z_index)', 'Z=%d')),'Location','southwest');
+        legend(cellstr(num2str(Z_c(1:Z_index)', 'Z_c=%d')),'Location','southwest');
         
         % Counters to store the number of bits and errors simulated so far
         block_counts=[];
@@ -70,7 +70,7 @@ for BG_index = 1:length(BG)
         EsN0s = [];
         
         % Open a file to save the results into.
-        filename = ['results/BLER_vs_SNR_',num2str(BG(BG_index)),'_',num2str(Z(Z_index)),'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(seed)];
+        filename = ['results/BLER_vs_SNR_',num2str(BG(BG_index)),'_',num2str(Z_c(Z_index)),'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(seed)];
         fid = fopen([filename,'.txt'],'w');
         if fid == -1
             error('Could not open %s.txt',filename);
@@ -85,9 +85,13 @@ for BG_index = 1:length(BG)
         % Skip any encoded block lengths that generate errors
         try
 
-            hEnc = NRLDPCEncoder('BG',BG(BG_index),'Z',Z(Z_index));            
-            hDec = NRLDPCDecoder('BG',BG(BG_index),'Z',Z(Z_index),'iterations',iterations);
+            hEnc = NRLDPCEncoder('BG',BG(BG_index),'Z_c',Z_c(Z_index));            
+            hDec = NRLDPCDecoder('BG',BG(BG_index),'Z_c',Z_c(Z_index),'iterations',iterations);
             K = hEnc.K;
+            K_prime = K;
+            hEnc.K_prime = K_prime;
+            hDec.K_prime = K_prime;
+            
             
             % Loop over the SNRs
             while BLER > target_BLER
@@ -105,21 +109,27 @@ for BG_index = 1:length(BG)
                 % Continue the simulation until enough block errors have been simulated
                 while keep_going && block_error_counts(end) < target_block_errors
                     
-                    c = round(rand(K,1));                    
-                    d = step(hEnc,c);                    
-                    tx = step(hMod, d);
-                    rx = step(hChan, tx);
-                    d_tilde = step(hDemod, rx);
-                    c_hat = step(hDec, d_tilde);
+                    b = round(rand(K_prime,1));                    
+                    c = [b;NaN(K-K_prime,1)];
+                    d = step(hEnc,c); 
+                    e = d(~isnan(d));
                     
-                    if found_start == false && ~isequal(c,c_hat)
+                    tx = step(hMod, e);
+                    rx = step(hChan, tx);
+                    e_tilde = step(hDemod, rx);
+                    d_tilde = d;
+                    d_tilde(~isnan(d)) = e_tilde;
+                    c_hat = step(hDec, d_tilde);
+                    b_hat = c_hat(~isnan(c_hat));
+                    
+                    if found_start == false && ~isequal(b,b_hat)
                         keep_going = false;
                         BLER = 1;
                     else
                         found_start = true;
                         
                         % Determine if we have a block error
-                        if ~isequal(c,c_hat)
+                        if ~isequal(b,b_hat)
                             block_error_counts(end) = block_error_counts(end) + 1;
                         end
                         
@@ -147,7 +157,7 @@ for BG_index = 1:length(BG)
             end
         catch ME
             if strcmp(ME.identifier, 'ldpc_3gpp_matlab:UnsupportedBlockLength')
-                warning('ldpc_3gpp_matlab:UnsupportedBlockLength','The combination of base graph BG=%d and lifting size Z=%d is not supported. %s',BG(BG_index),Z(Z_index), getReport(ME, 'basic', 'hyperlinks', 'on' ));
+                warning('ldpc_3gpp_matlab:UnsupportedBlockLength','The combination of base graph BG=%d and lifting size Z=%d is not supported. %s',BG(BG_index),Z_c(Z_index), getReport(ME, 'basic', 'hyperlinks', 'on' ));
                 continue
             else
                 rethrow(ME);

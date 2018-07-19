@@ -1,11 +1,11 @@
 function H_BG = get_3gpp_base_graph(BG, i_LS)
 
 if BG < 1 || BG > 2
-    error('BG must be 1 or 2');
+    error('ldpc_3gpp_matlab:UnsupportedBaseGraph','BG must be 1 or 2');
 end
 
 if i_LS < 0 || i_LS > 7
-    error('set_index must be between 0 and 7.');
+    error('ldpc_3gpp_matlab:UnsupportedSetIndex','set_index must be between 0 and 7.');
 end
 
 % Table 5.3.2-2 of TS38.212
