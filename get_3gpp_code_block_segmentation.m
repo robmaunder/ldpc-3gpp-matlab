@@ -1,6 +1,6 @@
 % Implements the first half of Section 5.2.2 of TS38.212
 
-function [C,L,K_prime,K,Z_c] = get_3gpp_code_block_segmentation(B, BG)
+function [C,L,K_b,K_prime,K,Z_c] = get_3gpp_code_block_segmentation(B, BG)
 if B <= 0
     error('ldpc_3gpp_matlab:UnsupportedBlockLength','B should be greater than 0.');
 end
