@@ -92,12 +92,12 @@ classdef NRLDPCEncoder < matlab.System
             if length(c) ~= obj.K
                 error('ldpc_3gpp_matlab:Error','Length of c should be K.');
             end
-            if ~all(isnan(c(obj.K_prime+1:end)))
-                error('ldpc_3gpp_matlab:Error','c should be appended with K-K_prime NaNs.');
-            end
             
             d = zeros(obj.N,1);
             
+            % Not sure about what to do if there are NaNs within the first
+            % 2*obj.Z_c elements of c. The following code (adapted from 
+            % TS38.212) does not set these to 0.            
             for k = 2*obj.Z_c:obj.K-1
                 if ~isnan(c(k+1))
                     d(k-2*obj.Z_c+1) = c(k+1);

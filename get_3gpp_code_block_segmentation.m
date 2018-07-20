@@ -35,9 +35,7 @@ end
 
 K_prime = B_prime/C;
 
-if(round(K_prime) ~= K_prime)
-    error('ldpc_3gpp_matlab:UnsupportedBlockLength','Unsupported block length.');
-end    
+% Not sure what to do if K_prime is not an integer
 
 Z_c = get_3gpp_lifting_size(K_b, K_prime);
 

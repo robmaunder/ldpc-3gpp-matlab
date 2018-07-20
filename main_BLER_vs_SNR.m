@@ -86,7 +86,7 @@ for BG_index = 1:length(BG)
         try
 
             hEnc = NRLDPCEncoder('BG',BG(BG_index),'Z_c',Z_c(Z_index));            
-            hDec = NRLDPCDecoder('BG',BG(BG_index),'Z_c',Z_c(Z_index),'iterations',iterations);
+            hDec = NRLDPCDecoder2('BG',BG(BG_index),'Z_c',Z_c(Z_index),'iterations',iterations);
             K = hEnc.K;
             K_prime = K;
             hEnc.K_prime = K_prime;

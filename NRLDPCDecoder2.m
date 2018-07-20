@@ -1,4 +1,4 @@
-classdef NRLDPCDecoder < matlab.System
+classdef NRLDPCDecoder2 < matlab.System
     
     properties(Nontunable)
         BG = 2; % Default value
@@ -20,7 +20,7 @@ classdef NRLDPCDecoder < matlab.System
     end
     
     methods
-        function obj = NRLDPCDecoder(varargin)
+        function obj = NRLDPCDecoder2(varargin)
             setProperties(obj,nargin,varargin{:});
         end
         
@@ -53,6 +53,7 @@ classdef NRLDPCDecoder < matlab.System
         
         function ParityCheckMatrix = get.ParityCheckMatrix(obj)
             ParityCheckMatrix = get_pcm(obj.BaseGraph,obj.Z_c);
+            ParityCheckMatrix = [ParityCheckMatrix(:,1:obj.K_prime),ParityCheckMatrix(:,obj.K+1:end)];
         end
         
         function K = get.K(obj)
@@ -97,12 +98,14 @@ classdef NRLDPCDecoder < matlab.System
             if length(d_tilde) ~= obj.N
                 error('ldpc_3gpp_matlab:Error','Length of d_tilde should be N.');
             end
+            if ~all(isnan(d_tilde(max(obj.K_prime-2*obj.Z_c+1,1):obj.K-2*obj.Z_c)))
+                error('ldpc_3gpp_matlab:Error','d_tilde should have NaNs in the appropriate places.');
+            end
             
             cw_tilde = [zeros(2*obj.Z_c,1); d_tilde];
-            c_tilde = cw_tilde(1:obj.K);
-            cw_tilde(isnan(cw_tilde)) = inf;
-            c_hat = double(step(obj.hLDPCDecoder, cw_tilde));          
-            c_hat(isnan(c_tilde)) = NaN;
+            c_hat = cw_tilde(1:obj.K);
+            cw_tilde = cw_tilde(~isnan(cw_tilde));
+            c_hat(~isnan(c_hat)) = double(step(obj.hLDPCDecoder, cw_tilde));          
          end
         
         
