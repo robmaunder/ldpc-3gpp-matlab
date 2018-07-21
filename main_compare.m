@@ -21,11 +21,17 @@ while true
     rv_id = 0; %randi([0,3]);
 
     I_LBRM = randi([0,1]);
+    
+    if randi([0,1])
+        L = 24;
+    else
+        L = 0;
+    end
 
     
-    hEnc = NRLDPCEncoder('BG',BG,'K_prime',K_prime,'I_LBRM',I_LBRM,'E',E,'rv_id',rv_id);
-    hDec = NRLDPCDecoder('BG',BG,'K_prime',K_prime,'I_LBRM',I_LBRM,'E',E,'rv_id',rv_id,'iterations',10);
-    hDec2 = NRLDPCDecoder2('BG',BG,'K_prime',K_prime,'I_LBRM',I_LBRM,'E',E,'rv_id',rv_id,'iterations',10);
+    hEnc = NRLDPCEncoder('BG',BG,'L',L,'K_prime',K_prime,'I_LBRM',I_LBRM,'E',E,'rv_id',rv_id);
+    hDec = NRLDPCDecoder('BG',BG,'L',L,'K_prime',K_prime,'I_LBRM',I_LBRM,'E',E,'rv_id',rv_id,'iterations',10);
+    hDec2 = NRLDPCDecoder2('BG',BG,'L',L,'K_prime',K_prime,'I_LBRM',I_LBRM,'E',E,'rv_id',rv_id,'iterations',10);
     
     N = hEnc.N;
 
@@ -39,7 +45,7 @@ while true
 
     EsN0 = 20;
     
-    fprintf("%d\t%d\t%d\t%d\t%d\t%d\t%d\n", BG, K_prime, I_LBRM, hEnc.N_cb, E, rv_id, EsN0)
+    fprintf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", BG, L, K_prime, I_LBRM, hEnc.N_cb, E, rv_id, EsN0)
     
     
     
@@ -47,9 +53,8 @@ while true
     hDemod = comm.PSKDemodulator(modulation_order, 'BitOutput',true, 'DecisionMethod','Log-likelihood ratio', 'Variance', 1/10^(hChan.SNR/10));
     
     
-    b = round(rand(K_prime,1));
-    c = [b;NaN(hEnc.K-K_prime,1)];
-    d = step(hEnc,c);
+    b = round(rand(K_prime-L,1));
+    d = step(hEnc,b);
     e = d(~isnan(d));
     f = [e;zeros(mod(-length(e),log2(modulation_order)),1)];
     tx = step(hMod, f);
@@ -58,11 +63,8 @@ while true
     e_tilde = f_tilde(1:length(e));
     d_tilde = d;
     d_tilde(~isnan(d)) = e_tilde;
-    c_hat = step(hDec, d_tilde);
-    b_hat = c_hat(~isnan(c_hat));
-    c_hat2 = step(hDec2, d_tilde);
-    b_hat2 = c_hat2(~isnan(c_hat2));
-    
+    b_hat = step(hDec, d_tilde);
+    b_hat2 = step(hDec2, d_tilde);
 
     if ~isequal(b_hat, b_hat2)
         fprintf("Decoder 1 mismatched with Decoder 2\n");

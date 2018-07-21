@@ -2,19 +2,23 @@ classdef NRLDPCDecoder2 < matlab.System
     
     properties(Nontunable)
         BG = 2; % Default value
+        L = 24; % Default value
         K_prime = 20; % Default value
         N_ref = 100; % Default value - swap for TBS_LBRM later
         I_LBRM = 0; % Default value
         rv_id = 0; % Default value
         E = 100; % Default value - E might be zero for some code blocks - think about this later
+        Q_m = 1; % Default value
         iterations = 100; % Default value
     end
     
     properties(Access = private, Hidden)
+        hCRCDetector
         hLDPCDecoder
     end
     
     properties(Dependent, SetAccess = private)
+        CRCGeneratorPolynomial        
         K_b
         SetIndex
         Z_c
@@ -36,6 +40,13 @@ classdef NRLDPCDecoder2 < matlab.System
                 error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
             end
             obj.BG = BG;
+        end
+        
+        function set.L(obj, L)
+            if L ~= 0 && L ~= 24
+                error('ldpc_3gpp_matlab:UnsupportedCRCLength','Valid values of L are 0 and 24.');
+            end
+            obj.L = L;
         end
         
         function set.K_prime(obj, K_prime)
@@ -70,6 +81,23 @@ classdef NRLDPCDecoder2 < matlab.System
             obj.E = E;
         end
                
+        function set.Q_m(obj, Q_m)
+            if Q_m <= 0
+                error('ldpc_3gpp_matlab:UnsupportedBlockLength','Q_m should be positive.');
+            end
+            obj.Q_m = Q_m;
+        end
+
+        function CRCGeneratorPolynomial = get.CRCGeneratorPolynomial(obj)
+            if obj.L == 24
+                CRCGeneratorPolynomial = 'z^24 + z^23 + z^6 + z^5 + z + 1';
+            elseif obj.L == 0
+                CRCGeneratorPolynomial = '';
+            else
+                error('ldpc_3gpp_matlab:UnsupportedCRCLength','Valid values of L are 0 and 24.');
+            end            
+        end
+                
         function K_b = get.K_b(obj)
             if obj.BG == 1
                 K_b = 22;
@@ -170,6 +198,9 @@ classdef NRLDPCDecoder2 < matlab.System
     methods(Access = protected)
         
         function setupImpl(obj)
+            if obj.L == 24
+                obj.hCRCDetector = comm.CRCDetector('Polynomial',obj.CRCGeneratorPolynomial);
+            end            
 %             try
 %                 obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
 %             catch
@@ -177,11 +208,28 @@ classdef NRLDPCDecoder2 < matlab.System
 %             end
         end
         
-        function c_hat = stepImpl(obj, e_tilde)
+        function b_hat = stepImpl(obj, f_tilde)
+            e_tilde = bit_interleaving(obj, f_tilde);
             d_tilde = bit_selection(obj, e_tilde);
             c_hat = LDPC_coding(obj, d_tilde);
+            b_hat = append_CRC_and_padding(obj, c_hat);
         end
         
+        
+        % Implements Section 5.4.2.2 of TS38.212        
+        function e_tilde = bit_interleaving(obj, f_tilde)
+            if length(f_tilde) ~= obj.E
+                error('ldpc_3gpp_matlab:Error','Length of f_tilde should be E.');
+            end
+
+            e_tilde = zeros(obj.E,1);
+
+            for j = 0:obj.E/obj.Q_m-1
+                for i = 0:obj.Q_m-1
+                    e_tilde(i*obj.E/obj.Q_m+j+1) = f_tilde(i+j*obj.Q_m+1);
+                end
+            end
+        end
         
         % Implements Section 5.4.2.1 of TS38.212
         function d_tilde = bit_selection(obj, e_tilde)
@@ -218,7 +266,32 @@ classdef NRLDPCDecoder2 < matlab.System
             c_hat(~isnan(c_hat)) = double(step(obj.hLDPCDecoder, cw_tilde));          
          end
         
-        
+        function b_hat = append_CRC_and_padding(obj, c_hat)
+            if length(c_hat) ~= obj.K
+                error('ldpc_3gpp_matlab:Error','Length of c_hat should be K.');
+            end
+            
+            b_hat = zeros(obj.K_prime - obj.L, 1);
+            p_hat = zeros(obj.L,1);
+            
+            s = 0;
+            for k = 0:obj.K_prime-obj.L-1
+                b_hat(s+1) = c_hat(k+1);
+                s = s + 1;
+            end
+            if obj.L == 24 % C>1
+                for k = obj.K_prime-obj.L:obj.K_prime-1
+                    p_hat(k+obj.L-obj.K_prime+1) = c_hat(k+1);
+                end
+                bp_hat = [b_hat; p_hat];                
+                [~,err] = step(obj.hCRCDetector,bp_hat);
+                if err
+                    b_hat = [];
+                end
+            end
+            
+        end
+         
         function resetImpl(obj)
             % Initialize / reset discrete-state properties
         end

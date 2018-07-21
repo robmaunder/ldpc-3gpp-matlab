@@ -2,18 +2,22 @@ classdef NRLDPCEncoder < matlab.System
     
     properties(Nontunable)
         BG = 2; % Default value
+        L = 24; % Default value
         K_prime = 20; % Default value
         N_ref = 100; % Default value - swap for TBS_LBRM later
         I_LBRM = 0; % Default value
         rv_id = 0; % Default value
         E = 100; % Default value - E might be zero for some code blocks - think about this later
+        Q_m = 1; % Default value
     end
     
     properties(Access = private, Hidden)
+        hCRCGenerator
         hLDPCEncoder
     end
     
     properties(Dependent, SetAccess = private)
+        CRCGeneratorPolynomial
         K_b
         SetIndex
         Z_c
@@ -35,6 +39,13 @@ classdef NRLDPCEncoder < matlab.System
                 error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
             end
             obj.BG = BG;
+        end
+        
+        function set.L(obj, L)
+            if L ~= 0 && L ~= 24
+                error('ldpc_3gpp_matlab:UnsupportedCRCLength','Valid values of L are 0 and 24.');
+            end
+            obj.L = L;
         end
         
         function set.K_prime(obj, K_prime)
@@ -69,12 +80,29 @@ classdef NRLDPCEncoder < matlab.System
             obj.E = E;
         end
         
+        function set.Q_m(obj, Q_m)
+            if Q_m <= 0
+                error('ldpc_3gpp_matlab:UnsupportedBlockLength','Q_m should be positive.');
+            end
+            obj.Q_m = Q_m;
+        end
+        
+        function CRCGeneratorPolynomial = get.CRCGeneratorPolynomial(obj)
+            if obj.L == 24
+                CRCGeneratorPolynomial = 'z^24 + z^23 + z^6 + z^5 + z + 1';
+            elseif obj.L == 0
+                CRCGeneratorPolynomial = '';
+            else
+                error('ldpc_3gpp_matlab:UnsupportedCRCLength','Valid values of L are 0 and 24.');
+            end
+        end
+        
         function K_b = get.K_b(obj)
             if obj.BG == 1
                 K_b = 22;
             elseif obj.BG == 2
-                 % TS 38.212 uses B rather than K_prime for the comparisons
-                 % below, but both ways give the same answer in all cases
+                % TS 38.212 uses B rather than K_prime for the comparisons
+                % below, but both ways give the same answer in all cases
                 if obj.K_prime > 640
                     K_b = 10;
                 elseif obj.K_prime > 560
@@ -92,7 +120,7 @@ classdef NRLDPCEncoder < matlab.System
         function Z_c = get.Z_c(obj)
             Z_c = get_3gpp_lifting_size(obj.K_b, obj.K_prime);
         end
-               
+        
         function SetIndex = get.SetIndex(obj)
             SetIndex = get_3gpp_set_index(obj.Z_c);
         end
@@ -170,12 +198,41 @@ classdef NRLDPCEncoder < matlab.System
     methods(Access = protected)
         
         function setupImpl(obj)
+            if obj.L == 24
+                obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCGeneratorPolynomial);
+            end
             obj.hLDPCEncoder = comm.LDPCEncoder('ParityCheckMatrix',obj.ParityCheckMatrix);
         end
         
-        function e = stepImpl(obj, c)
+        function f = stepImpl(obj, b)
+            c = append_CRC_and_padding(obj, b);
             d = LDPC_coding(obj, c);
             e = bit_selection(obj, d);
+            f = bit_interleaving(obj, e);
+        end
+        
+        function c = append_CRC_and_padding(obj, b)
+            if length(b) ~= obj.K_prime - obj.L
+                error('ldpc_3gpp_matlab:Error','Length of b should be K_prime-L.');
+            end
+            
+            c = zeros(obj.K, 1);
+            
+            s = 0;
+            for k = 0:obj.K_prime-obj.L-1
+                c(k+1) = b(s+1);
+                s = s + 1;
+            end
+            if obj.L == 24 % C>1
+                bp = step(obj.hCRCGenerator, b);
+                p = bp(obj.K_prime-obj.L+1:obj.K_prime);
+                for k = obj.K_prime-obj.L:obj.K_prime-1
+                    c(k+1) = p(k+obj.L-obj.K_prime+1);
+                end
+            end
+            for k = obj.K_prime:obj.K-1
+                c(k+1) = NaN;
+            end
         end
         
         % Implements Section 5.3.2 of TS38.212
@@ -199,7 +256,7 @@ classdef NRLDPCEncoder < matlab.System
             end
             
             cw = step(obj.hLDPCEncoder, c);
-            w = cw(obj.K+1:end);
+            w = cw(obj.K+1:obj.N+2*obj.Z_c);
             
             for k = obj.K:obj.N+2*obj.Z_c-1
                 d(k-2*obj.Z_c+1) = w(k-obj.K+1);
@@ -222,6 +279,21 @@ classdef NRLDPCEncoder < matlab.System
                     k = k+1;
                 end
                 j = j+1;
+            end
+        end
+        
+        % Implements Section 5.4.2.2 of TS38.212
+        function f = bit_interleaving(obj, e)
+            if length(e) ~= obj.E
+                error('ldpc_3gpp_matlab:Error','Length of e should be E.');
+            end
+            
+            f = zeros(obj.E,1);
+            
+            for j = 0:obj.E/obj.Q_m-1
+                for i = 0:obj.Q_m-1
+                    f(i+j*obj.Q_m+1) = e(i*obj.E/obj.Q_m+j+1);
+                end
             end
         end
         
