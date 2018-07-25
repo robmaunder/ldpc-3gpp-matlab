@@ -1,4 +1,4 @@
-function main_BLER_vs_SNR(BG, L, K_prime, E, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function main_BLER_vs_SNR(BG, L, K_prime, E, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % MAIN_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
 % Ratio (SNR) for 3GPP New Radio LDPC code.
 %   target_block_errors should be an integer scalar. The simulation of each
@@ -28,14 +28,15 @@ function main_BLER_vs_SNR(BG, L, K_prime, E, iterations, target_block_errors, ta
 
 % Default values
 if nargin == 0
-    BG = 2;
+    BG = 1;
     L = 24;
-    K_prime = 40;
-    E = 100;
+    K_prime = 44;
+    E = 132;
+    rv_id_sequence = [0];
     iterations = 50;
     target_block_errors = 10;
     target_BLER = 1e-3;
-    EsN0_start = -10;
+    EsN0_start = -5;
     EsN0_delta = 0.5;
     seed = 0;
 end
@@ -92,7 +93,7 @@ for BG_index = 1:length(BG)
                 try
                     
                     hEnc = NRLDPCEncoder('BG',BG(BG_index),'L',L(L_index),'K_prime',K_prime(K_prime_index),'E',E(E_index))
-                    hDec = NRLDPCDecoder2('BG',BG(BG_index),'L',L(L_index),'K_prime',K_prime(K_prime_index),'E',E(E_index),'iterations',iterations);
+                    hDec = NRLDPCDecoder('BG',BG(BG_index),'L',L(L_index),'K_prime',K_prime(K_prime_index),'E',E(E_index),'iterations',iterations);
                     
                     
                     % Loop over the SNRs
@@ -112,16 +113,29 @@ for BG_index = 1:length(BG)
                         while keep_going && block_error_counts(end) < target_block_errors
                             
                             b = round(rand(K_prime(K_prime_index)-L(L_index),1));
-                            d = step(hEnc,b);
-                            e = d(~isnan(d));
-                            f = [e;zeros(mod(-length(e),log2(modulation_order)),1)];
-                            tx = step(hMod, f);
-                            rx = step(hChan, tx);
-                            f_tilde = step(hDemod, rx);
-                            e_tilde = f_tilde(1:length(e));
-                            d_tilde = d;
-                            d_tilde(~isnan(d)) = e_tilde;
-                            b_hat = step(hDec, d_tilde);
+                            
+                            b_hat = [];
+                            rv_id_index = 1;
+                            reset(hDec); % Reset the incremental redundancy buffer
+                            
+                            while isempty(b_hat) && rv_id_index <= length(rv_id_sequence)
+                            
+                                hEnc.rv_id = rv_id_sequence(rv_id_index);
+                                hDec.rv_id = rv_id_sequence(rv_id_index);
+                                                               
+                                d = step(hEnc,b);
+                                e = d(~isnan(d));
+                                f = [e;zeros(mod(-length(e),log2(modulation_order)),1)];
+                                tx = step(hMod, f);
+                                rx = step(hChan, tx);
+                                f_tilde = step(hDemod, rx);
+                                e_tilde = f_tilde(1:length(e));
+                                d_tilde = d;
+                                d_tilde(~isnan(d)) = e_tilde;
+                                b_hat = step(hDec, d_tilde);
+                            
+                                rv_id_index = rv_id_index + 1;
+                            end
                             
                             if found_start == false && ~isequal(b,b_hat)
                                 keep_going = false;

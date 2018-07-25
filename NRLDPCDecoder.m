@@ -1,20 +1,27 @@
 classdef NRLDPCDecoder < matlab.System
     
     properties(Nontunable)
-        BG = 2; % Default value
+        BG = 1; % Default value
         L = 24; % Default value
-        K_prime = 20; % Default value
-        N_ref = 100; % Default value - swap for TBS_LBRM later
+        K_prime = 44; % Default value
+        N_ref = 132; % Default value - swap for TBS_LBRM later
         I_LBRM = 0; % Default value
+    end
+    
+    properties
         rv_id = 0; % Default value
-        E = 100; % Default value - E might be zero for some code blocks - think about this later
+        E = 132; % Default value - E might be zero for some code blocks - think about this later
         Q_m = 1; % Default value
-        iterations = 100; % Default value
+        iterations = 50; % Default value        
     end
     
     properties(Access = private, Hidden)
         hCRCDetector
         hLDPCDecoder
+    end
+    
+    properties(DiscreteState)
+        d_tilde2
     end
     
     properties(Dependent, SetAccess = private)
@@ -200,17 +207,20 @@ classdef NRLDPCDecoder < matlab.System
             if obj.L == 24
                 obj.hCRCDetector = comm.CRCDetector('Polynomial',obj.CRCGeneratorPolynomial);
             end
-            %             try
-            %                 obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
-            %             catch
-            obj.hLDPCDecoder = comm.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
-            %             end
+            try
+                obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+            catch
+                obj.hLDPCDecoder = comm.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+            end
+            obj.d_tilde2 = zeros(obj.N,1);
+            
         end
         
         function b_hat = stepImpl(obj, f_tilde)
             e_tilde = bit_interleaving(obj, f_tilde);
             d_tilde = bit_selection(obj, e_tilde);
-            c_hat = LDPC_coding(obj, d_tilde);
+            obj.d_tilde2 = obj.d_tilde2 + d_tilde;            
+            c_hat = LDPC_coding(obj, obj.d_tilde2);
             b_hat = append_CRC_and_padding(obj, c_hat);
         end
         
@@ -291,7 +301,7 @@ classdef NRLDPCDecoder < matlab.System
         
         
         function resetImpl(obj)
-            % Initialize / reset discrete-state properties
+            obj.d_tilde2 = zeros(obj.N,1);
         end
         
     end

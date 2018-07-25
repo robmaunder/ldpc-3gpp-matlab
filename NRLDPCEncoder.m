@@ -1,13 +1,16 @@
 classdef NRLDPCEncoder < matlab.System
     
     properties(Nontunable)
-        BG = 2; % Default value
+        BG = 1; % Default value
         L = 24; % Default value
-        K_prime = 20; % Default value
-        N_ref = 100; % Default value - swap for TBS_LBRM later
+        K_prime = 44; % Default value
+        N_ref = 132; % Default value - swap for TBS_LBRM later
         I_LBRM = 0; % Default value
+    end
+    
+    properties
         rv_id = 0; % Default value
-        E = 100; % Default value - E might be zero for some code blocks - think about this later
+        E = 132; % Default value - E might be zero for some code blocks - think about this later
         Q_m = 1; % Default value
     end
     
