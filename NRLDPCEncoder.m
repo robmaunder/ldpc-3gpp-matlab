@@ -15,7 +15,7 @@ classdef NRLDPCEncoder < NRLDPC
         
         function setupImpl(obj)
             if obj.L == 24
-                obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCGeneratorPolynomial);
+                obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCPolynomial);
             end
             obj.hLDPCEncoder = comm.LDPCEncoder('ParityCheckMatrix',obj.ParityCheckMatrix);
         end
@@ -28,21 +28,21 @@ classdef NRLDPCEncoder < NRLDPC
         end
         
         function c = append_CRC_and_padding(obj, b)
-            if length(b) ~= obj.K_prime - obj.L
-                error('ldpc_3gpp_matlab:Error','Length of b should be K_prime-L.');
+            if length(b) ~= obj.K_prime_minus_L
+                error('ldpc_3gpp_matlab:Error','Length of b should be K_prime_minus_L.');
             end
             
             c = zeros(obj.K, 1);
             
             s = 0;
-            for k = 0:obj.K_prime-obj.L-1
+            for k = 0:obj.K_prime_minus_L-1
                 c(k+1) = b(s+1);
                 s = s + 1;
             end
             if obj.L == 24 % C>1
                 bp = step(obj.hCRCGenerator, b);
-                p = bp(obj.K_prime-obj.L+1:obj.K_prime);
-                for k = obj.K_prime-obj.L:obj.K_prime-1
+                p = bp(obj.K_prime_minus_L+1:obj.K_prime);
+                for k = obj.K_prime_minus_L:obj.K_prime-1
                     c(k+1) = p(k+obj.L-obj.K_prime+1);
                 end
             end
@@ -115,7 +115,7 @@ classdef NRLDPCEncoder < NRLDPC
         
         
         function resetImpl(obj)
-            % Initialize / reset discrete-state properties
+
         end
         
     end

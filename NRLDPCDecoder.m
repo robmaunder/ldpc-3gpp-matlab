@@ -1,5 +1,9 @@
 classdef NRLDPCDecoder < NRLDPC
     
+    properties(Nontunable)
+        I_HARQ = 0;
+    end
+    
     properties
         iterations = 50; % Default value        
     end
@@ -12,8 +16,7 @@ classdef NRLDPCDecoder < NRLDPC
     properties(DiscreteState)
         d_tilde2
     end
-    
-    
+        
     methods
         function obj = NRLDPCDecoder(varargin)
             setProperties(obj,nargin,varargin{:});
@@ -24,7 +27,7 @@ classdef NRLDPCDecoder < NRLDPC
         
         function setupImpl(obj)
             if obj.L == 24
-                obj.hCRCDetector = comm.CRCDetector('Polynomial',obj.CRCGeneratorPolynomial);
+                obj.hCRCDetector = comm.CRCDetector('Polynomial',obj.CRCPolynomial);
             end
 %             try
 %                 obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
@@ -38,7 +41,11 @@ classdef NRLDPCDecoder < NRLDPC
         function b_hat = stepImpl(obj, f_tilde)
             e_tilde = bit_interleaving(obj, f_tilde);
             d_tilde = bit_selection(obj, e_tilde);
-            obj.d_tilde2 = obj.d_tilde2 + d_tilde;            
+            if obj.I_HARQ == 0
+                obj.d_tilde2 = d_tilde;
+            else
+                obj.d_tilde2 = obj.d_tilde2 + d_tilde;            
+            end
             c_hat = LDPC_coding(obj, obj.d_tilde2);
             b_hat = append_CRC_and_padding(obj, c_hat);
         end
@@ -96,16 +103,16 @@ classdef NRLDPCDecoder < NRLDPC
                 error('ldpc_3gpp_matlab:Error','Length of c_hat should be K.');
             end
             
-            b_hat = zeros(obj.K_prime - obj.L, 1);
+            b_hat = zeros(obj.K_prime_minus_L, 1);
             p_hat = zeros(obj.L,1);
             
             s = 0;
-            for k = 0:obj.K_prime-obj.L-1
+            for k = 0:obj.K_prime_minus_L-1
                 b_hat(s+1) = c_hat(k+1);
                 s = s + 1;
             end
             if obj.L == 24 % C>1
-                for k = obj.K_prime-obj.L:obj.K_prime-1
+                for k = obj.K_prime_minus_L:obj.K_prime-1
                     p_hat(k+obj.L-obj.K_prime+1) = c_hat(k+1);
                 end
                 bp_hat = [b_hat; p_hat];                

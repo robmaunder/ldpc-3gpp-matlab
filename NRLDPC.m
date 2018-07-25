@@ -2,8 +2,8 @@ classdef NRLDPC < matlab.System
     
     properties(Nontunable)
         BG = 1; % Default value
-        L = 24; % Default value
-        K_prime = 44; % Default value
+        CRC = 'CRC24B'; % Default value
+        K_prime_minus_L = 20; % Default value
         N_ref = 132; % Default value - swap for TBS_LBRM later
         I_LBRM = 0; % Default value
     end
@@ -15,7 +15,9 @@ classdef NRLDPC < matlab.System
     end
         
     properties(Dependent, SetAccess = protected)
-        CRCGeneratorPolynomial
+        CRCPolynomial
+        L
+        K_prime
         K_b
         SetIndex
         Z_c
@@ -39,18 +41,16 @@ classdef NRLDPC < matlab.System
             obj.BG = BG;
         end
         
-        function set.L(obj, L)
-            if L ~= 0 && L ~= 24
-                error('ldpc_3gpp_matlab:UnsupportedCRCLength','Valid values of L are 0 and 24.');
-            end
-            obj.L = L;
+        function set.CRC(obj, CRC)
+            get_3gpp_crc_polynomial(CRC);
+            obj.CRC = CRC;
         end
         
-        function set.K_prime(obj, K_prime)
-            if K_prime < 0
-                error('ldpc_3gpp_matlab:UnsupportedBlockLength','K_prime should not be negative.');
+        function set.K_prime_minus_L(obj, K_prime_minus_L)
+            if K_prime_minus_L < 0
+                error('ldpc_3gpp_matlab:UnsupportedBlockLength','K_prime_minus_L should not be negative.');
             end
-            obj.K_prime = K_prime;
+            obj.K_prime_minus_L = K_prime_minus_L;
         end
         
         function set.N_ref(obj, N_ref)
@@ -85,14 +85,16 @@ classdef NRLDPC < matlab.System
             obj.Q_m = Q_m;
         end
         
-        function CRCGeneratorPolynomial = get.CRCGeneratorPolynomial(obj)
-            if obj.L == 24
-                CRCGeneratorPolynomial = 'z^24 + z^23 + z^6 + z^5 + z + 1';
-            elseif obj.L == 0
-                CRCGeneratorPolynomial = '';
-            else
-                error('ldpc_3gpp_matlab:UnsupportedCRCLength','Valid values of L are 0 and 24.');
-            end
+        function CRCPolynomial = get.CRCPolynomial(obj)
+            CRCPolynomial = get_3gpp_crc_polynomial(obj.CRC);
+        end
+
+        function L = get.L(obj)
+            [~,L] = get_3gpp_crc_polynomial(obj.CRC);
+        end
+
+        function K_prime = get.K_prime(obj)
+            K_prime = obj.K_prime_minus_L + obj.L;
         end
         
         function K_b = get.K_b(obj)
@@ -199,11 +201,10 @@ classdef NRLDPC < matlab.System
 
         end
         
-        function out = stepImpl(obj, in)
+        function stepImpl(obj)
 
         end
-
-        
+       
         function resetImpl(obj)
 
         end
