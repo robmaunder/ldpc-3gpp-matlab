@@ -14,9 +14,7 @@ classdef NRLDPCEncoder < NRLDPC
     methods(Access = protected)
         
         function setupImpl(obj)
-            if obj.L == 24
-                obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCPolynomial);
-            end
+            obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCPolynomial);
             obj.hLDPCEncoder = comm.LDPCEncoder('ParityCheckMatrix',obj.ParityCheckMatrix);
         end
         
@@ -39,12 +37,10 @@ classdef NRLDPCEncoder < NRLDPC
                 c(k+1) = b(s+1);
                 s = s + 1;
             end
-            if obj.L == 24 % C>1
-                bp = step(obj.hCRCGenerator, b);
-                p = bp(obj.K_prime_minus_L+1:obj.K_prime);
-                for k = obj.K_prime_minus_L:obj.K_prime-1
-                    c(k+1) = p(k+obj.L-obj.K_prime+1);
-                end
+            bp = step(obj.hCRCGenerator, b);
+            p = bp(obj.K_prime_minus_L+1:obj.K_prime);
+            for k = obj.K_prime_minus_L:obj.K_prime-1
+                c(k+1) = p(k+obj.L-obj.K_prime+1);
             end
             for k = obj.K_prime:obj.K-1
                 c(k+1) = NaN;

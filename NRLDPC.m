@@ -1,17 +1,53 @@
 classdef NRLDPC < matlab.System
     
     properties(Nontunable)
+        % BG selects between LDPC base graph 1 of Table 5.3.2-2 in TS38.212 
+        % and LDPC base graph 2 of Table 5.3.2-3. Base graph 1 is used for 
+        % long block lengths and high coding rates, while base graph 2 is 
+        % used for short block lengt hand low coding rates, as described in 
+        % Sections 6.2.2 and 7.2.2 of TS38.212.
         BG = 1; % Default value
+        
+        % CRC selects between CRC24B, CRC24A or CRC16, as defined in 
+        % Section 5.1 of TS38.212. Long transport blocks are appended with 
+        % a CRC24A, while short transport blocks are appended with a CRC16, 
+        % as described in Sections 6.2.1 and 7.2.1 of TS38.212. If the
+        % transport block (with appended CRC) is sufficiently long, then it
+        % is decomposed into two or more code blocks, each of which is 
+        % appended with a CRC24B, as described in Section 5.2.2 of 
+        % TS38.212. The use of CRC16 or CRC24 in this code implies that we 
+        % are considering the LDPC coding of a transport block that is not 
+        % long enough to be decomposed into two or more code blocks. The 
+        % use of CRC24B in this code implies that we are considering one of 
+        % the code blocks within a transport block that is long enough to 
+        % be decomposed into two or more code blocks.
         CRC = 'CRC24B'; % Default value
+                
+        % K_prime_minus_L specifies the number of information bits. If we 
+        % are considering the LDPC coding of a transport block that is not 
+        % long enough to be decomposed into two or more code blocks, then 
+        % the number of information bits in the transport block is given by 
+        % A, as defined in Sections 6.2.1 and 6.3.1 of TS38.212. If we are 
+        % considering one of the code blocks within a transport block that 
+        % is long enough to be decomposed into two or more code blocks, 
+        % then the number of information bits in the code block is given by 
+        % K'-L, as defined in Section 5.2.2 of TS38.212.
         K_prime_minus_L = 20; % Default value
-        N_ref = 132; % Default value - swap for TBS_LBRM later
+        
+        % I_LBRM specifies whether a limit is imposed upon the lenghth of 
+        % the circular buffer used for rate matching, as defined in Section 
+        % 5.4.2.1 of TS38.212. A full buffer of length N_c = N is used if 
+        % I_LBRM = 0 and a limited buffer of length N_c = min(N,N_ref) is 
+        % used otherwise.
         I_LBRM = 0; % Default value
+
+        % N_ref specifies the limit imposed upon the lenghth of 
+        % the circular buffer used for rate matching, when I_LBRM is
+        % non-zero, as defined in Section 5.4.2.1 of TS38.212. N_ref is
+        % ignored when I_LBRM is zero.
+        N_ref = 132; % Default value
     end
 
-    properties (Hidden,Constant)
-        CRCSet = matlab.system.StringSet({'CRC24A','CRC24B','CRC16'});
-    end    
-    
     properties
         rv_id = 0; % Default value
         E = 132; % Default value - E might be zero for some code blocks - think about this later
@@ -32,6 +68,10 @@ classdef NRLDPC < matlab.System
         N_cb
         k_0
     end
+    
+    properties (Hidden,Constant)
+        CRCSet = matlab.system.StringSet({'CRC24A','CRC24B','CRC16'});
+    end    
     
     methods
         function obj = NRLDPC(varargin)

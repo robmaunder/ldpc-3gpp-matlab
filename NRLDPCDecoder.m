@@ -26,9 +26,7 @@ classdef NRLDPCDecoder < NRLDPC
     methods(Access = protected)
         
         function setupImpl(obj)
-            if obj.L == 24
-                obj.hCRCDetector = comm.CRCDetector('Polynomial',obj.CRCPolynomial);
-            end
+            obj.hCRCDetector = comm.CRCDetector('Polynomial',obj.CRCPolynomial);
 %             try
 %                 obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.ParityCheckMatrix,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
 %             catch
@@ -111,7 +109,6 @@ classdef NRLDPCDecoder < NRLDPC
                 b_hat(s+1) = c_hat(k+1);
                 s = s + 1;
             end
-            if obj.L == 24 % C>1
                 for k = obj.K_prime_minus_L:obj.K_prime-1
                     p_hat(k+obj.L-obj.K_prime+1) = c_hat(k+1);
                 end
@@ -120,7 +117,6 @@ classdef NRLDPCDecoder < NRLDPC
                 if err
                     b_hat = [];
                 end
-            end
             
         end
         
