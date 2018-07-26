@@ -1,3 +1,4 @@
+%NRLDPCENCODER 3GPP New Radio LDPC encoder
 classdef NRLDPCEncoder < NRLDPC
     
     properties(Access = private, Hidden)
@@ -11,13 +12,31 @@ classdef NRLDPCEncoder < NRLDPC
         end
     end    
     
+    % Methods used to execute processing.
     methods(Access = protected)
         
+        % Code executed on the first time that the step function is called,
+        % or the first time after the release function is called. e.g.
+        % a = NRLDPCEncoder;
+        % step(a); % <- setupImpl executed here
+        % step(a); % <- setupImpl not executed here
+        % reset(a);
+        % step(a); % <- setupImpl not executed here
+        % release(a);
+        % step(a); % <- setupImpl executed here
         function setupImpl(obj)
             obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCPolynomial);
             obj.hLDPCEncoder = comm.LDPCEncoder('ParityCheckMatrix',obj.H);
         end
         
+        % Code executed by the step function. e.g.
+        % a = NRLDPCEncoder;
+        % step(a); % <- stepImpl executed here
+        % step(a); % <- stepImpl executed here
+        % reset(a);
+        % step(a); % <- stepImpl executed here
+        % release(a);
+        % step(a); % <- stepImpl executed here
         function f = stepImpl(obj, b)
             c = append_CRC_and_padding(obj, b);
             d = LDPC_coding(obj, c);
@@ -109,7 +128,14 @@ classdef NRLDPCEncoder < NRLDPC
             end
         end
         
-        
+        % Code executed by the reset function. e.g.
+        % a = NRLDPCEncoder;
+        % step(a);
+        % step(a);
+        % reset(a); % <- resetImpl executed here
+        % step(a);
+        % release(a);
+        % step(a);
         function resetImpl(obj)
 
         end
