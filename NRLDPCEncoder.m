@@ -15,7 +15,7 @@ classdef NRLDPCEncoder < NRLDPC
         
         function setupImpl(obj)
             obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCPolynomial);
-            obj.hLDPCEncoder = comm.LDPCEncoder('ParityCheckMatrix',obj.ParityCheckMatrix);
+            obj.hLDPCEncoder = comm.LDPCEncoder('ParityCheckMatrix',obj.H);
         end
         
         function f = stepImpl(obj, b)
