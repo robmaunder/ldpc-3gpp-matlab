@@ -1,4 +1,4 @@
-function main_BLER_vs_SNR(BG, CRC, K_prime_minus_L, E, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function main_BLER_vs_SNR(K_prime_minus_L, E, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % MAIN_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
 % Ratio (SNR) for 3GPP New Radio LDPC code.
 %   target_block_errors should be an integer scalar. The simulation of each
@@ -28,10 +28,11 @@ function main_BLER_vs_SNR(BG, CRC, K_prime_minus_L, E, rv_id_sequence, iteration
 
 % Default values
 if nargin == 0
-    BG = 1;
-    CRC = 'CRC24B';
     K_prime_minus_L = 20;
     E = 132;
+    CRC = 'CRC24B';
+    BG = 1;
+    Modulation = 'QPSK';
     rv_id_sequence = [0];
     iterations = 50;
     target_block_errors = 10;
@@ -44,10 +45,10 @@ end
 % Seed the random number generator
 rng(seed);
 
-modulation_order = 4;
 
-hMod = comm.PSKModulator(modulation_order, 'BitInput',true);
-
+hMod = NRModulator('Modulation',Modulation);
+hDemod = NRDemodulator('Modulation',Modulation);
+hChan = comm.AWGNChannel('NoiseMethod','Signal to noise ratio (SNR)');
 
 % Consider each base graph in turn
 for BG_index = 1:length(BG)
@@ -56,7 +57,7 @@ for BG_index = 1:length(BG)
         % Create a figure to plot the results.
         figure
         axes1 = axes('YScale','log');
-        title(['3GPP New Radio LDPC code, BG',num2str(BG(BG_index)),', ',CRC,', E = ',num2str(E(E_index)),', iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors),', QPSK, AWGN']);
+        title(['3GPP New Radio LDPC code, E = ',num2str(E(E_index)),', ',CRC,', BG',num2str(BG(BG_index)),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
         ylabel('BLER');
         xlabel('E_s/N_0 [dB]');
         ylim([target_BLER,1]);
@@ -76,7 +77,7 @@ for BG_index = 1:length(BG)
             EsN0s = [];
             
             % Open a file to save the results into.
-            filename = ['results/BLER_vs_SNR_',num2str(BG(BG_index)),'_',CRC,'_',num2str(K_prime_minus_L(K_prime_minus_L_index)),'_',num2str(E(E_index)),'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(seed)];
+            filename = ['results/BLER_vs_SNR_',num2str(K_prime_minus_L(K_prime_minus_L_index)),'_',num2str(E(E_index)),'_',CRC,'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
             fid = fopen([filename,'.txt'],'w');
             if fid == -1
                 error('Could not open %s.txt',filename);
@@ -91,15 +92,13 @@ for BG_index = 1:length(BG)
             % Skip any encoded block lengths that generate errors
             try
                 
-                hEnc = NRLDPCEncoder('BG',BG(BG_index),'CRC',CRC,'K_prime_minus_L',K_prime_minus_L(K_prime_minus_L_index),'E',E(E_index))
-                hDec = NRLDPCDecoder('BG',BG(BG_index),'CRC',CRC,'K_prime_minus_L',K_prime_minus_L(K_prime_minus_L_index),'E',E(E_index),'I_HARQ',1,'iterations',iterations);
-                
-                
+                hEnc = NRLDPCEncoder('BG',BG(BG_index),'CRC',CRC,'K_prime_minus_L',K_prime_minus_L(K_prime_minus_L_index),'E',E(E_index),'Q_m',hMod.Q_m)
+                hDec = NRLDPCDecoder('BG',BG(BG_index),'CRC',CRC,'K_prime_minus_L',K_prime_minus_L(K_prime_minus_L_index),'E',E(E_index),'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
+                               
                 % Loop over the SNRs
                 while BLER > target_BLER
-                    hChan = comm.AWGNChannel('NoiseMethod','Signal to noise ratio (SNR)','SNR',EsN0);
-                    hDemod = comm.PSKDemodulator(modulation_order, 'BitOutput',true, 'DecisionMethod','Log-likelihood ratio', 'Variance', 1/10^(hChan.SNR/10));
-                    
+                    hChan.SNR = EsN0;
+                    hDemod.Variance = 1/10^(EsN0/10);
                     
                     % Start new counters
                     block_counts(end+1) = 0;
@@ -122,16 +121,11 @@ for BG_index = 1:length(BG)
                             hEnc.rv_id = rv_id_sequence(rv_id_index);
                             hDec.rv_id = rv_id_sequence(rv_id_index);
                             
-                            d = step(hEnc,b);
-                            e = d(~isnan(d));
-                            f = [e;zeros(mod(-length(e),log2(modulation_order)),1)];
+                            f = step(hEnc,b);
                             tx = step(hMod, f);
                             rx = step(hChan, tx);
                             f_tilde = step(hDemod, rx);
-                            e_tilde = f_tilde(1:length(e));
-                            d_tilde = d;
-                            d_tilde(~isnan(d)) = e_tilde;
-                            b_hat = step(hDec, d_tilde);
+                            b_hat = step(hDec, f_tilde);
                             
                             rv_id_index = rv_id_index + 1;
                         end

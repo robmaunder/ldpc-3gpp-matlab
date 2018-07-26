@@ -4,6 +4,10 @@ classdef NRModulator < matlab.System
         Modulation = 'BPSK';
     end
     
+    properties (Hidden,Constant)
+        ModulationSet = matlab.system.StringSet({'BPSK','QPSK','16QAM','64QAM','256QAM'});
+    end
+    
     properties(Dependent, SetAccess = protected)
         ModulationOrder % number of points in the signal constellation
         Q_m % number of bits per symbol

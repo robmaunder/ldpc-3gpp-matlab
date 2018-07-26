@@ -5,6 +5,11 @@ classdef NRDemodulator < matlab.System
         DecisionMethod = 'Log-likelihood ratio';
     end
     
+    properties (Hidden,Constant)
+        ModulationSet = matlab.system.StringSet({'BPSK','QPSK','16QAM','64QAM','256QAM'});
+        DecisionMethodSet = matlab.system.StringSet({'Log-likelihood ratio','Approximate log-likelihood ratio','Hard decision'});
+    end    
+    
     properties
         Variance = 1;
     end

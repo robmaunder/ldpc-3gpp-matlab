@@ -7,6 +7,10 @@ classdef NRLDPC < matlab.System
         N_ref = 132; % Default value - swap for TBS_LBRM later
         I_LBRM = 0; % Default value
     end
+
+    properties (Hidden,Constant)
+        CRCSet = matlab.system.StringSet({'CRC24A','CRC24B','CRC16'});
+    end    
     
     properties
         rv_id = 0; % Default value
@@ -41,11 +45,6 @@ classdef NRLDPC < matlab.System
             obj.BG = BG;
         end
         
-        function set.CRC(obj, CRC)
-            get_3gpp_crc_polynomial(CRC);
-            obj.CRC = CRC;
-        end
-        
         function set.K_prime_minus_L(obj, K_prime_minus_L)
             if K_prime_minus_L < 0
                 error('ldpc_3gpp_matlab:UnsupportedBlockLength','K_prime_minus_L should not be negative.');
@@ -58,10 +57,6 @@ classdef NRLDPC < matlab.System
                 error('ldpc_3gpp_matlab:UnsupportedBlockLength','N_ref should not be negative.');
             end
             obj.N_ref = N_ref;
-        end
-        
-        function set.I_LBRM(obj, I_LBRM)
-            obj.I_LBRM = I_LBRM;
         end
         
         function set.rv_id(obj, rv_id)
