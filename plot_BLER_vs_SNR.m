@@ -1,4 +1,4 @@
-function plot_BLER_vs_SNR(K_prime_minus_L, E, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function plot_BLER_vs_SNR(K, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % PLOT_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
 % Ratio (SNR) for 3GPP New Radio LDPC code.
 %   target_block_errors should be an integer scalar. The simulation of each
@@ -28,8 +28,8 @@ function plot_BLER_vs_SNR(K_prime_minus_L, E, CRC, BG, Modulation, rv_id_sequenc
 
 % Default values
 if nargin == 0
-    K_prime_minus_L = 500-24;
-    E = 1500;
+    K = 500;
+    R = 1/3;
     CRC = 'CRC24B';
     BG = 2;
     Modulation = 'QPSK';
@@ -52,12 +52,12 @@ hChan = comm.AWGNChannel('NoiseMethod','Signal to noise ratio (SNR)');
 
 % Consider each base graph in turn
 for BG_index = 1:length(BG)
-    for E_index = 1:length(E)
+    for R_index = 1:length(R)
         
         % Create a figure to plot the results.
         figure
         axes1 = axes('YScale','log');
-        title(['3GPP New Radio LDPC code, E = ',num2str(E(E_index)),', ',CRC,', BG',num2str(BG(BG_index)),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
+        title(['3GPP New Radio LDPC code, R = ',num2str(R(R_index)),', ',CRC,', BG',num2str(BG(BG_index)),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
         ylabel('BLER');
         xlabel('E_s/N_0 [dB]');
         ylim([target_BLER,1]);
@@ -65,11 +65,11 @@ for BG_index = 1:length(BG)
         drawnow
         
         % Consider each information block length in turn
-        for K_prime_minus_L_index = 1:length(K_prime_minus_L)
+        for K_index = 1:length(K)
             
             % Create the plot
             plot1 = plot(nan,'Parent',axes1);
-            legend(cellstr(num2str(K_prime_minus_L(1:K_prime_minus_L_index)', 'K_prime_minus_L=%d')),'Location','southwest');
+            legend(cellstr(num2str(K(1:K_index)', 'K=%d')),'Location','southwest');
             
             % Counters to store the number of bits and errors simulated so far
             block_counts=[];
@@ -77,7 +77,7 @@ for BG_index = 1:length(BG)
             EsN0s = [];
             
             % Open a file to save the results into.
-            filename = ['results/BLER_vs_SNR_',num2str(K_prime_minus_L(K_prime_minus_L_index)),'_',num2str(E(E_index)),'_',CRC,'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
+            filename = ['results/BLER_vs_SNR_',num2str(K(K_index)),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
             fid = fopen([filename,'.txt'],'w');
             if fid == -1
                 error('Could not open %s.txt',filename);
@@ -92,9 +92,17 @@ for BG_index = 1:length(BG)
             % Skip any encoded block lengths that generate errors
             try
                 
-                hEnc = NRLDPCEncoder('BG',BG(BG_index),'CRC',CRC,'K_prime_minus_L',K_prime_minus_L(K_prime_minus_L_index),'E',E(E_index),'Q_m',hMod.Q_m)
-                hDec = NRLDPCDecoder('BG',BG(BG_index),'CRC',CRC,'K_prime_minus_L',K_prime_minus_L(K_prime_minus_L_index),'E',E(E_index),'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
-                               
+                E = round((K(K_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
+
+                
+                
+                hEnc = NRLDPCEncoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m);
+                hDec = NRLDPCDecoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
+                
+                hEnc.K_prime_minus_L = K(K_index) - hEnc.L
+                hDec.K_prime_minus_L = K(K_index) - hDec.L;
+                
+                
                 % Loop over the SNRs
                 while BLER > target_BLER
                     hChan.SNR = EsN0;
@@ -110,7 +118,7 @@ for BG_index = 1:length(BG)
                     % Continue the simulation until enough block errors have been simulated
                     while keep_going && block_error_counts(end) < target_block_errors
                         
-                        b = round(rand(K_prime_minus_L(K_prime_minus_L_index),1));
+                        b = round(rand(hEnc.K_prime_minus_L,1));
                         
                         b_hat = [];
                         rv_id_index = 1;
@@ -165,7 +173,7 @@ for BG_index = 1:length(BG)
                 end
             catch ME
                 if strcmp(ME.identifier, 'ldpc_3gpp_matlab:UnsupportedBlockLength')
-                    warning('ldpc_3gpp_matlab:UnsupportedBlockLength','The combination of base graph BG=%d and K_prime_minus_L=%d is not supported. %s',BG(BG_index),K_prime_minus_L(K_prime_minus_L_index), getReport(ME, 'basic', 'hyperlinks', 'on' ));
+                    warning('ldpc_3gpp_matlab:UnsupportedBlockLength','The combination of base graph BG=%d and K=%d is not supported. %s',BG(BG_index),K(K_index), getReport(ME, 'basic', 'hyperlinks', 'on' ));
                     continue
                 else
                     rethrow(ME);
