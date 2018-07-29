@@ -1,5 +1,5 @@
-function main_BLER_vs_SNR(K_prime_minus_L, E, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
-% MAIN_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
+function plot_BLER_vs_SNR(K_prime_minus_L, E, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+% PLOT_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
 % Ratio (SNR) for 3GPP New Radio LDPC code.
 %   target_block_errors should be an integer scalar. The simulation of each
 %   SNR for each coding rate will continue until this number of block
@@ -28,16 +28,16 @@ function main_BLER_vs_SNR(K_prime_minus_L, E, CRC, BG, Modulation, rv_id_sequenc
 
 % Default values
 if nargin == 0
-    K_prime_minus_L = 20;
-    E = 132;
+    K_prime_minus_L = 500-24;
+    E = 1500;
     CRC = 'CRC24B';
-    BG = 1;
+    BG = 2;
     Modulation = 'QPSK';
     rv_id_sequence = [0];
     iterations = 50;
     target_block_errors = 10;
     target_BLER = 1e-3;
-    EsN0_start = -5;
+    EsN0_start = -2;
     EsN0_delta = 0.5;
     seed = 0;
 end
