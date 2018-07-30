@@ -1,4 +1,4 @@
-function plot_BLER_vs_SNR(K, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function plot_BLER_vs_SNR(K_prime, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % PLOT_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
 % Ratio (SNR) for 3GPP New Radio LDPC code.
 %   target_block_errors should be an integer scalar. The simulation of each
@@ -28,7 +28,7 @@ function plot_BLER_vs_SNR(K, R, CRC, BG, Modulation, rv_id_sequence, iterations,
 
 % Default values
 if nargin == 0
-    K = 500;
+    K_prime = 500;
     R = 1/3;
     CRC = 'CRC24B';
     BG = 2;
@@ -65,11 +65,11 @@ for BG_index = 1:length(BG)
         drawnow
         
         % Consider each information block length in turn
-        for K_index = 1:length(K)
+        for K_prime_index = 1:length(K_prime)
             
             % Create the plot
             plot1 = plot(nan,'Parent',axes1);
-            legend(cellstr(num2str(K(1:K_index)', 'K=%d')),'Location','southwest');
+            legend(cellstr(num2str(K_prime(1:K_prime_index)', 'K''=%d')),'Location','southwest');
             
             % Counters to store the number of bits and errors simulated so far
             block_counts=[];
@@ -77,7 +77,7 @@ for BG_index = 1:length(BG)
             EsN0s = [];
             
             % Open a file to save the results into.
-            filename = ['results/BLER_vs_SNR_',num2str(K(K_index)),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
+            filename = ['results/BLER_vs_SNR_',num2str(K_prime(K_prime_index)),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
             fid = fopen([filename,'.txt'],'w');
             if fid == -1
                 error('Could not open %s.txt',filename);
@@ -92,15 +92,15 @@ for BG_index = 1:length(BG)
             % Skip any encoded block lengths that generate errors
             try
                 
-                E = round((K(K_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
+                E = round((K_prime(K_prime_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
 
                 
                 
                 hEnc = NRLDPCEncoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m);
                 hDec = NRLDPCDecoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
                 
-                hEnc.K_prime_minus_L = K(K_index) - hEnc.L
-                hDec.K_prime_minus_L = K(K_index) - hDec.L;
+                hEnc.K_prime_minus_L = K_prime(K_prime_index) - hEnc.L
+                hDec.K_prime_minus_L = K_prime(K_prime_index) - hDec.L;
                 
                 
                 % Loop over the SNRs
@@ -172,8 +172,8 @@ for BG_index = 1:length(BG)
                     
                 end
             catch ME
-                if strcmp(ME.identifier, 'ldpc_3gpp_matlab:UnsupportedBlockLength')
-                    warning('ldpc_3gpp_matlab:UnsupportedBlockLength','The combination of base graph BG=%d and K=%d is not supported. %s',BG(BG_index),K(K_index), getReport(ME, 'basic', 'hyperlinks', 'on' ));
+                if strcmp(ME.identifier, 'ldpc_3gpp_matlab:UnsupportedParameters')
+                    warning('ldpc_3gpp_matlab:UnsupportedParameters','The requested combination of parameters is not supported. %s', getReport(ME, 'basic', 'hyperlinks', 'on' ));
                     continue
                 else
                     rethrow(ME);

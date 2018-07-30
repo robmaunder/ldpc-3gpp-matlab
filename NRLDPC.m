@@ -186,21 +186,21 @@ classdef NRLDPC < matlab.System
         % Valid values of BG are described in Section 5.3.2 of TS38.212.
         function set.BG(obj, BG)
             if BG < 1 || BG > 2
-                error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of BG are 1 and 2.');
             end
             obj.BG = BG;
         end
         
         function set.K_prime_minus_L(obj, K_prime_minus_L)
             if K_prime_minus_L < 0
-                error('ldpc_3gpp_matlab:UnsupportedBlockLength','K_prime_minus_L should not be negative.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','K_prime_minus_L should not be negative.');
             end
             obj.K_prime_minus_L = K_prime_minus_L;
         end
         
         function set.N_ref(obj, N_ref)
             if N_ref < 0
-                error('ldpc_3gpp_matlab:UnsupportedBlockLength','N_ref should not be negative.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','N_ref should not be negative.');
             end
             obj.N_ref = N_ref;
         end
@@ -209,14 +209,14 @@ classdef NRLDPC < matlab.System
         % TS38.212.
         function set.rv_id(obj, rv_id)
             if rv_id < 0 || rv_id > 3
-                error('ldpc_3gpp_matlab:UnsupportedParameter','Valid values of rv_id are 0, 1, 2 and 3.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of rv_id are 0, 1, 2 and 3.');
             end
             obj.rv_id = rv_id;
         end
         
         function set.E(obj, E)
             if E < 0
-                error('ldpc_3gpp_matlab:UnsupportedBlockLength','E should not be negative.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','E should not be negative.');
             end
             obj.E = E;
         end
@@ -224,7 +224,7 @@ classdef NRLDPC < matlab.System
         % Valid values of Q_m are derived from TS38.211.
         function set.Q_m(obj, Q_m)
             if Q_m ~= 1 && Q_m ~= 2 && Q_m ~= 4 && Q_m ~= 6 && Q_m ~= 8
-                error('ldpc_3gpp_matlab:UnsupportedBlockLength','Valid vales of Q_m are 1, 2, 4, 6 and 8.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','Valid vales of Q_m are 1, 2, 4, 6 and 8.');
             end
             obj.Q_m = Q_m;
         end
@@ -260,7 +260,7 @@ classdef NRLDPC < matlab.System
                     K_b = 6;
                 end
             else
-                error('ldpc_3gpp_matlab:UnsupportedBaseGraph','BG must be 1 or 2');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','BG must be 1 or 2');
             end
         end
         
@@ -276,7 +276,7 @@ classdef NRLDPC < matlab.System
             elseif obj.BG == 2
                 K = obj.Z_c*10;
             else
-                error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of BG are 1 and 2.');
             end
         end
         
@@ -302,7 +302,7 @@ classdef NRLDPC < matlab.System
             elseif obj.BG == 2
                 N = obj.Z_c*50;
             else
-                error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of BG are 1 and 2.');
             end
         end
         
@@ -327,7 +327,7 @@ classdef NRLDPC < matlab.System
                 elseif obj.rv_id == 3
                     k_0 = floor((56*obj.N_cb)/(66*obj.Z_c))*obj.Z_c;
                 else
-                    error('ldpc_3gpp_matlab:UnsupportedRedundancyVersion','Valid values of rv_id are 0, 1, 2 and 3.')
+                    error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of rv_id are 0, 1, 2 and 3.')
                 end
             elseif obj.BG == 2
                 if obj.rv_id == 0
@@ -339,10 +339,10 @@ classdef NRLDPC < matlab.System
                 elseif obj.rv_id == 3
                     k_0 = floor((43*obj.N_cb)/(50*obj.Z_c))*obj.Z_c;
                 else
-                    error('ldpc_3gpp_matlab:UnsupportedRedundancyVersion','Valid values of rv_id are 0, 1, 2 and 3.')
+                    error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of rv_id are 0, 1, 2 and 3.')
                 end
             else
-                error('ldpc_3gpp_matlab:UnsupportedBaseGraph','Valid values of BG are 1 and 2.');
+                error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of BG are 1 and 2.');
             end
         end
     end

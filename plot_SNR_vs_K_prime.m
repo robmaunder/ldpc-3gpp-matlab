@@ -1,4 +1,4 @@
-function plot_SNR_vs_K(K, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function plot_SNR_vs_K_prime(K_prime, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % PLOT_SNR_VS_A Plots Signal to Noise Ratio (SNR) required to achieve a
 % particular Block Error Rate (BLER) as a function of block length, for
 % LDPC codes.
@@ -35,7 +35,7 @@ function plot_SNR_vs_K(K, R, CRC, BG, Modulation, rv_id_sequence, iterations, ta
 
 % Default values
 if nargin == 0
-    K = (1000:1000:8000);
+    K_prime = (1000:1000:8000);
     R = 1/3;
     CRC = 'CRC24B';
     BG = 1;
@@ -57,7 +57,7 @@ figure
 axes1 = axes;
 title(['3GPP New Radio LDPC code, ',CRC,', BG',num2str(BG),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
 ylabel('Required E_s/N_0 [dB]');
-xlabel('K');
+xlabel('K''');
 grid on
 hold on
 drawnow
@@ -71,10 +71,10 @@ for R_index = 1:length(R)
     
     % Create the plot
     plots(R_index) = plot(nan,'Parent',axes1);
-    set(plots(R_index),'XData',K);
+    set(plots(R_index),'XData',K_prime);
     legend(cellstr(num2str(R(1:R_index)', 'R=%0.2f')),'Location','eastoutside');
     
-    EsN0s = nan(1,length(K));
+    EsN0s = nan(1,length(K_prime));
     
     % Open a file to save the results into.
     filename = ['results/SNR_vs_A_',num2str(target_BLER),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(seed)];
@@ -85,7 +85,7 @@ for R_index = 1:length(R)
     
     
     % Consider each information block length in turn
-    for K_index = 1:length(K)
+    for K_prime_index = 1:length(K_prime)
         
         found_start = false;
         
@@ -96,14 +96,14 @@ for R_index = 1:length(R)
             prev_BLER = nan;
             EsN0 = EsN0_start;
             prev_EsN0 = nan;
-            E = round((K(K_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
+            E = round((K_prime(K_prime_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
             
             
             hEnc = NRLDPCEncoder('BG',BG,'CRC',CRC,'E',E,'Q_m',hMod.Q_m);
             hDec = NRLDPCDecoder('BG',BG,'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
             
-            hEnc.K_prime_minus_L = K(K_index) - hEnc.L
-            hDec.K_prime_minus_L = K(K_index) - hDec.L;
+            hEnc.K_prime_minus_L = K_prime(K_prime_index) - hEnc.L
+            hDec.K_prime_minus_L = K_prime(K_prime_index) - hDec.L;
             
             % Loop over the SNRs
             while BLER > target_BLER
@@ -169,15 +169,15 @@ for R_index = 1:length(R)
                 EsN0 = EsN0 + EsN0_delta;
             end
         catch ME
-            if strcmp(ME.identifier, 'ldpc_3gpp_matlab:UnsupportedBlockLength')
-                warning('ldpc_3gpp_matlab:UnsupportedBlockLength','The combination of base graph BG=%d and K=%d is not supported. %s',BG(BG_index),K(K_index), getReport(ME, 'basic', 'hyperlinks', 'on' ));
+            if strcmp(ME.identifier, 'ldpc_3gpp_matlab:UnsupportedParameters')
+                warning('ldpc_3gpp_matlab:UnsupportedParameters','The requested combination of parameters is not supported. %s', getReport(ME, 'basic', 'hyperlinks', 'on' ));
                 continue
             else
                 rethrow(ME);
             end
         end
         % Use interpolation to determine the SNR where the BLER equals the target
-        EsN0s(K_index) = interp1(log10([prev_BLER, BLER]),[prev_EsN0,EsN0],log10(target_BLER));
+        EsN0s(K_prime_index) = interp1(log10([prev_BLER, BLER]),[prev_EsN0,EsN0],log10(target_BLER));
         
         % Plot the SNR vs A results
         set(plots(R_index),'YData',EsN0s);
@@ -188,7 +188,7 @@ for R_index = 1:length(R)
         
         drawnow;
         
-        fprintf(fid,'%d\t%f\n',K(K_index),EsN0s(K_index));
+        fprintf(fid,'%d\t%f\n',K_prime(K_prime_index),EsN0s(K_prime_index));
         
         
     end

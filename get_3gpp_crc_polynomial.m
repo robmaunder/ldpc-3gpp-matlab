@@ -10,7 +10,7 @@ function [crc_polynomial, L] = get_3gpp_crc_polynomial(crc)
         crc_polynomial = 'z^16 + z^12 + z^5 + 1';
         L = 16;
     else
-        error('ldpc_3gpp_matlab:UnsupportedCRCGenerator','Invalid CRC identifier.');
+        error('ldpc_3gpp_matlab:UnsupportedParameters','Invalid CRC identifier.');
     end
 
 end

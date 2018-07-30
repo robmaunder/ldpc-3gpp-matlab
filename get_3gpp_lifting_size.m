@@ -12,7 +12,7 @@ function Z_c = get_3gpp_lifting_size(K_b, K_prime)
     end
     
     if Z_c == inf
-        error('ldpc_3gpp_matlab:UnsupportedBlockLength','Invalid block length.');
+        error('ldpc_3gpp_matlab:UnsupportedParameters','Invalid block length.');
     end
 end
         
