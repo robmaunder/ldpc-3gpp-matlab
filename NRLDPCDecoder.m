@@ -1,23 +1,75 @@
+%NRLDPCDECODER Decoder for 3GPP New Radio LDPC code
+%   LDPCDEC = NRLDPCDECODER creates a 3GPP New Radio LDPC decoder system
+%   object, LDPCDEC. Default values are assumed for all properties, which
+%   are inherited from the NRLDPC base class.
+%
+%   LDPCDEC = NRLDPCDECODER(Name,Value) creates a 3GPP New Radio LDPC
+%   decoder system object, LDPCDEC, with the specified property Name set to
+%   the specified Value. You can specify additional name-value pair
+%   arguments in any order as (Name1,Value1,...,NameN,ValueN).
+%
+%   Copyright © 2018 Robert G. Maunder. This program is free software: you 
+%   can redistribute it and/or modify it under the terms of the GNU General 
+%   Public License as published by the Free Software Foundation, either 
+%   version 3 of the License, or (at your option) any later version. This 
+%   program is distributed in the hope that it will be useful, but WITHOUT 
+%   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
+%   FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License 
+%   for more details.
 classdef NRLDPCDecoder < NRLDPC
     
     properties(Nontunable)
-        I_HARQ = 0;
+        %I_HARQ Enable Hybrid Automatic Repeat reQuest (HARQ)
+        %   Specifies whether or not successive blocks of input LLRs are assumed to
+        %   be retransmissions of the same information block. When I_HARQ = 0, it
+        %   is assumed that successive blocks of input LLRs correspond to different
+        %   information blocks. In this case, the blocks of input LLRs are decoded
+        %   independently. When I_HARQ ~= 0, the successive blocks of input LLRs
+        %   are assumed to be retransmissions of the same information block. In
+        %   this case the successive blocks of input LLRs are accumulated in an
+        %   internal buffer, before they are processed by the LDPC decoder core.
+        %   The internal buffer may be reset using the reset method, when the
+        %   retransmission of a particular information block is completed, allowing
+        %   the transmission of another information block.
+        I_HARQ = 0; % Default value
     end
     
     properties
+        %ITERATIONS Number of decoding iterations
+        %   Specifies the number of flooding decoding iterations performed during
+        %   LDPC decoding.
         iterations = 50; % Default value        
     end
     
     properties(Access = private, Hidden)
+        %HCRCDETECTOR Cyclic Redundancy Check (CRC) detector
+        %   A COMM.CRCDETECTOR used to check the CRC.  
+        %
+        %   See also COMM.CRCDETECTOR
         hCRCDetector
+
+        %HLDPCDECODER Low Density Parity Check (LDPC) decoder
+        %   A COMM.LDPCDECODER used to perform the LDPC decoding.  
+        %
+        %   See also COMM.LDPCDECODER        
         hLDPCDecoder
     end
     
     properties(DiscreteState)
-        d_tilde2
+        %BUFFER Internal buffer used to accumulate input LLRs during HARQ
+        %   When I_HARQ ~= 0, successive blocks of input LLRs are assumed to be
+        %   retransmissions of the same information block. In this case the
+        %   successive blocks of input LLRs are accumulated in this internal
+        %   buffer, before they are processed by the LDPC decoder core. The
+        %   internal buffer may be reset using the reset method, when the
+        %   retransmission of a particular information block is completed, allowing
+        %   the transmission of another information block.
+        buffer
     end
         
     methods
+        % Constructor allowing properties to be set according to e.g.
+        % a = NRLDPCDecoder('BG',1,'K_prime_minus_L',20,'E',132);
         function obj = NRLDPCDecoder(varargin)
             setProperties(obj,nargin,varargin{:});
         end        
@@ -32,7 +84,7 @@ classdef NRLDPCDecoder < NRLDPC
 %             catch
                 obj.hLDPCDecoder = comm.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
 %             end
-            obj.d_tilde2 = zeros(obj.N,1);
+            obj.buffer = zeros(obj.N,1);
             
         end
         
@@ -40,11 +92,11 @@ classdef NRLDPCDecoder < NRLDPC
             e_tilde = bit_interleaving(obj, f_tilde);
             d_tilde = bit_selection(obj, e_tilde);
             if obj.I_HARQ == 0
-                obj.d_tilde2 = d_tilde;
+                c_hat = LDPC_coding(obj, d_tilde);
             else
-                obj.d_tilde2 = obj.d_tilde2 + d_tilde;            
+                obj.buffer = obj.buffer + d_tilde;            
+                c_hat = LDPC_coding(obj, obj.buffer);
             end
-            c_hat = LDPC_coding(obj, obj.d_tilde2);
             b_hat = append_CRC_and_padding(obj, c_hat);
         end
         
@@ -119,11 +171,9 @@ classdef NRLDPCDecoder < NRLDPC
                 end
             
         end
-        
-        
-        
+                
         function resetImpl(obj)
-            obj.d_tilde2 = zeros(obj.N,1);
+            obj.buffer = zeros(obj.N,1);
         end
         
     end

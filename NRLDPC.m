@@ -54,10 +54,10 @@ classdef NRLDPC < matlab.System
         K_prime_minus_L = 20; % Default value
         
         %I_LBRM Enable limited buffer rate matching
-        %   Specifies whether a limit is imposed upon the lenghth of the circular
-        %   buffer used for rate matching, as defined in Section 5.4.2.1 of
-        %   TS38.212. A full buffer is used if I_LBRM = 0 and a limited buffer is
-        %   used otherwise.
+        %   Specifies whether or not a limit is imposed upon the lenghth of the
+        %   circular buffer used for rate matching, as defined in Section 5.4.2.1
+        %   of TS38.212. A full buffer is used if I_LBRM = 0 and a limited buffer
+        %   is used otherwise.
         I_LBRM = 0; % Default value
     end
 
