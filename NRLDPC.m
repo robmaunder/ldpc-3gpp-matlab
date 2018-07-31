@@ -28,18 +28,19 @@ classdef NRLDPC < matlab.System
         BG = 1; % Default value
         
         %CRC Cyclic Redundancy Check (CRC) selection
-        %   Selects between CRC16, CRC24A or CRC24B, as defined in Section 5.1 of 
-        %   TS38.212. Long transport blocks are appended with a CRC24A, while short 
-        %   transport blocks are appended with a CRC16, as described in Sections 
-        %   6.2.1 and 7.2.1 of TS38.212. If the transport block (with appended CRC) 
-        %   is sufficiently long, then it is decomposed into two or more code 
-        %   blocks, each of which is appended with a CRC24B, as described in 
-        %   Section 5.2.2 of TS38.212. The use of CRC16 or CRC24 in this code 
-        %   implies that we are considering the LDPC coding of a transport block 
-        %   that is not long enough to be decomposed into two or more code blocks. 
-        %   The use of CRC24B in this code implies that we are considering one of 
-        %   the code blocks within a transport block that is long enough to be 
-        %   decomposed into two or more code blocks.
+        %   Selects between 'CRC16', 'CRC24A' or 'CRC24B', as defined in Section
+        %   5.1 of TS38.212. Alternatively, 'None' can be used to remove the CRC.
+        %   Long transport blocks are appended with a CRC24A, while short transport
+        %   blocks are appended with a CRC16, as described in Sections 6.2.1 and
+        %   7.2.1 of TS38.212. If the transport block (with appended CRC) is
+        %   sufficiently long, then it is decomposed into two or more code blocks,
+        %   each of which is appended with a CRC24B, as described in Section 5.2.2
+        %   of TS38.212. The use of CRC16 or CRC24 in this code implies that we are
+        %   considering the LDPC coding of a transport block that is not long
+        %   enough to be decomposed into two or more code blocks. The use of CRC24B
+        %   in this code implies that we are considering one of the code blocks
+        %   within a transport block that is long enough to be decomposed into two
+        %   or more code blocks.
         CRC = 'CRC24B'; % Default value
                 
         %K_PRIME_MINUS_L Number of information bits
@@ -171,7 +172,7 @@ classdef NRLDPC < matlab.System
     
     % A StringSet specifies the valid values of string parameters.
     properties (Hidden,Constant)
-        CRCSet = matlab.system.StringSet({'CRC24A','CRC24B','CRC16'});
+        CRCSet = matlab.system.StringSet({'CRC24A','CRC24B','CRC16','None'});
     end    
     
     % Methods used to set and get the values of properties. 
