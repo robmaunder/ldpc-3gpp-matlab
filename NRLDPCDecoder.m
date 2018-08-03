@@ -89,19 +89,19 @@ classdef NRLDPCDecoder < NRLDPC
         end
         
         function b_hat = stepImpl(obj, f_tilde)
-            e_tilde = bit_interleaving(obj, f_tilde);
-            d_tilde = bit_selection(obj, e_tilde);
+            e_tilde = bit_deinterleaving(obj, f_tilde);
+            d_tilde = bit_deselection(obj, e_tilde);
             if obj.I_HARQ == 0
-                c_hat = LDPC_coding(obj, d_tilde);
+                c_hat = LDPC_decoding(obj, d_tilde);
             else
                 obj.buffer = obj.buffer + d_tilde;            
-                c_hat = LDPC_coding(obj, obj.buffer);
+                c_hat = LDPC_decoding(obj, obj.buffer);
             end
-            b_hat = append_CRC_and_padding(obj, c_hat);
+            b_hat = remove_CRC_and_padding(obj, c_hat);
         end
         
         % Implements Section 5.4.2.2 of TS38.212
-        function e_tilde = bit_interleaving(obj, f_tilde)
+        function e_tilde = bit_deinterleaving(obj, f_tilde)
             if size(f_tilde,1) ~= obj.E || size(f_tilde,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','f_tilde should be a column vector of length E.');
             end
@@ -116,7 +116,7 @@ classdef NRLDPCDecoder < NRLDPC
         end
         
         % Implements Section 5.4.2.1 of TS38.212
-        function d_tilde = bit_selection(obj, e_tilde)
+        function d_tilde = bit_deselection(obj, e_tilde)
             if size(e_tilde,1) ~= obj.E || size(e_tilde,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','e_tilde should be a column vector of length E.');
             end
@@ -136,7 +136,7 @@ classdef NRLDPCDecoder < NRLDPC
         end
         
         % Implements Section 5.3.2 of TS38.212
-        function [c_tilde_p, d_tilde_p] = LDPC_coding(obj, d_tilde_a, c_tilde_a)
+        function [c_tilde_p, d_tilde_p] = LDPC_decoding(obj, d_tilde_a, c_tilde_a)
             if size(d_tilde_a,1) ~= obj.N || size(d_tilde_a,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','d_tilde_a should be a column vector of length N.');
             end
@@ -153,18 +153,18 @@ classdef NRLDPCDecoder < NRLDPC
             end
                             
             cw_tilde_a = [zeros(2*obj.Z_c,1); d_tilde_a];
-            cw_tilde_a2 = cw_tilde_a; 
+            padding_mask = isnan(cw_tilde_a);            
             if nargin == 3
-                cw_tilde_a2(1:obj.K) = cw_tilde_a2(1:obj.K) + c_tilde_a;
+                cw_tilde_a(1:obj.K) = cw_tilde_a(1:obj.K) + c_tilde_a;
             end            
-            cw_tilde_a2(isnan(cw_tilde_a)) = inf;
-            cw_tilde_p = double(step(obj.hLDPCDecoder, cw_tilde_a2));
-            cw_tilde_p(isnan(cw_tilde_a)) = NaN;
+            cw_tilde_a(padding_mask) = inf;
+            cw_tilde_p = double(step(obj.hLDPCDecoder, cw_tilde_a));
+            cw_tilde_p(padding_mask) = NaN;
             c_tilde_p = cw_tilde_p(1:obj.K);
             d_tilde_p = cw_tilde_p(2*obj.Z_c+1:end);
         end
         
-        function b_hat = append_CRC_and_padding(obj, c_hat)
+        function b_hat = remove_CRC_and_padding(obj, c_hat)
             if size(c_hat,1) ~= obj.K || size(c_hat,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','c_hat should be a column vector of length K.');
             end
