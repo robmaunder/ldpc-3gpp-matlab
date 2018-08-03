@@ -32,13 +32,13 @@ classdef NRLDPCDecoder < NRLDPC
         %   retransmission of a particular information block is completed, allowing
         %   the transmission of another information block.
         I_HARQ = 0; % Default value
-    end
-    
-    properties
+
         %ITERATIONS Number of decoding iterations
         %   Specifies the number of flooding decoding iterations performed during
         %   LDPC decoding.
-        iterations = 50; % Default value        
+        MaximumIterationCount = 50; % Default value    
+                
+        DecisionMethod = 'Hard decision';
     end
     
     properties(Access = private, Hidden)
@@ -80,9 +80,9 @@ classdef NRLDPCDecoder < NRLDPC
         function setupImpl(obj)
             obj.hCRCDetector = comm.CRCDetector('Polynomial',obj.CRCPolynomial);
 %             try
-%                 obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+%                 obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.MaximumIterationCount,'IterationTerminationCondition','Parity check satisfied', 'DecisionMethod', obj.DecisionMethod, 'OutputValue', 'Whole codeword');
 %             catch
-                obj.hLDPCDecoder = comm.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+                obj.hLDPCDecoder = comm.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.MaximumIterationCount,'IterationTerminationCondition','Parity check satisfied', 'DecisionMethod', obj.DecisionMethod, 'OutputValue', 'Whole codeword');
 %             end
             obj.buffer = zeros(obj.N,1);
             
@@ -102,8 +102,8 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.4.2.2 of TS38.212
         function e_tilde = bit_interleaving(obj, f_tilde)
-            if length(f_tilde) ~= obj.E
-                error('ldpc_3gpp_matlab:Error','Length of f_tilde should be E.');
+            if size(f_tilde,1) ~= obj.E || size(f_tilde,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','f_tilde should be a column vector of length E.');
             end
             
             e_tilde = zeros(obj.E,1);
@@ -117,8 +117,8 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.4.2.1 of TS38.212
         function d_tilde = bit_selection(obj, e_tilde)
-            if length(e_tilde) ~= obj.E
-                error('ldpc_3gpp_matlab:Error','Length of e_tilde should be E.');
+            if size(e_tilde,1) ~= obj.E || size(e_tilde,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','e_tilde should be a column vector of length E.');
             end
             
             d_tilde = zeros(obj.N,1);
@@ -136,21 +136,37 @@ classdef NRLDPCDecoder < NRLDPC
         end
         
         % Implements Section 5.3.2 of TS38.212
-        function c_hat = LDPC_coding(obj, d_tilde)
-            if length(d_tilde) ~= obj.N
-                error('ldpc_3gpp_matlab:Error','Length of d_tilde should be N.');
+        function [c_tilde_p, d_tilde_p] = LDPC_coding(obj, d_tilde_a, c_tilde_a)
+            if size(d_tilde_a,1) ~= obj.N || size(d_tilde_a,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','d_tilde_a should be a column vector of length N.');
             end
-            
-            cw_tilde = [zeros(2*obj.Z_c,1); d_tilde];
-            c_tilde = cw_tilde(1:obj.K);
-            cw_tilde(isnan(cw_tilde)) = inf;
-            c_hat = double(step(obj.hLDPCDecoder, cw_tilde));
-            c_hat(isnan(c_tilde)) = NaN;
+            if nargin == 3
+                if ~strcmp(obj.DecisionMethod,'Soft decision')
+                    error('ldpc_3gpp_matlab:Error','c_tilde_a input is only supported for DecisionMethod of ''Soft decision''');
+                end
+                if size(c_tilde_a,1) ~= obj.K || size(c_tilde_a,2) ~= 1
+                    error('ldpc_3gpp_matlab:Error','c_tilde_a should be a column vector of length K.');
+                end
+                if ~isequal(isnan(c_tilde_a(2*obj.Z_c+1:end)),isnan(d_tilde_a(1:obj.K - 2*obj.Z_c)))
+                    error('ldpc_3gpp_matlab:Error','c_tilde_a and d_tilde_a should have padding bits in corresponding positions.');
+                end
+            end
+                            
+            cw_tilde_a = [zeros(2*obj.Z_c,1); d_tilde_a];
+            cw_tilde_a2 = cw_tilde_a; 
+            if nargin == 3
+                cw_tilde_a2(1:obj.K) = cw_tilde_a2(1:obj.K) + c_tilde_a;
+            end            
+            cw_tilde_a2(isnan(cw_tilde_a)) = inf;
+            cw_tilde_p = double(step(obj.hLDPCDecoder, cw_tilde_a2));
+            cw_tilde_p(isnan(cw_tilde_a)) = NaN;
+            c_tilde_p = cw_tilde_p(1:obj.K);
+            d_tilde_p = cw_tilde_p(2*obj.Z_c+1:end);
         end
         
         function b_hat = append_CRC_and_padding(obj, c_hat)
-            if length(c_hat) ~= obj.K
-                error('ldpc_3gpp_matlab:Error','Length of c_hat should be K.');
+            if size(c_hat,1) ~= obj.K || size(c_hat,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','c_hat should be a column vector of length K.');
             end
             
             b_hat = zeros(obj.K_prime_minus_L, 1);

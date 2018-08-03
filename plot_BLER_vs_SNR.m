@@ -1,4 +1,4 @@
-function plot_BLER_vs_SNR(K_prime, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function plot_BLER_vs_SNR(K_prime, R, CRC, BG, Modulation, rv_id_sequence, MaximumIterationCount, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % PLOT_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
 % Ratio (SNR) for 3GPP New Radio LDPC code.
 %   target_block_errors should be an integer scalar. The simulation of each
@@ -28,13 +28,13 @@ function plot_BLER_vs_SNR(K_prime, R, CRC, BG, Modulation, rv_id_sequence, itera
 
 % Default values
 if nargin == 0
-    K_prime = 500;
+    K_prime = 50;
     R = 1/3;
     CRC = 'CRC24B';
     BG = 2;
     Modulation = 'QPSK';
     rv_id_sequence = [0];
-    iterations = 50;
+    MaximumIterationCount = 50;
     target_block_errors = 10;
     target_BLER = 1e-3;
     EsN0_start = -2;
@@ -57,7 +57,7 @@ for BG_index = 1:length(BG)
         % Create a figure to plot the results.
         figure
         axes1 = axes('YScale','log');
-        title(['3GPP New Radio LDPC code, R = ',num2str(R(R_index)),', ',CRC,', BG',num2str(BG(BG_index)),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
+        title(['3GPP New Radio LDPC code, R = ',num2str(R(R_index)),', ',CRC,', BG',num2str(BG(BG_index)),', ',Modulation,', AWGN, iterations = ',num2str(MaximumIterationCount),', errors = ',num2str(target_block_errors)]);
         ylabel('BLER');
         xlabel('E_s/N_0 [dB]');
         ylim([target_BLER,1]);
@@ -77,7 +77,7 @@ for BG_index = 1:length(BG)
             EsN0s = [];
             
             % Open a file to save the results into.
-            filename = ['results/BLER_vs_SNR_',num2str(K_prime(K_prime_index)),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
+            filename = ['results/BLER_vs_SNR_',num2str(K_prime(K_prime_index)),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(MaximumIterationCount),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
             fid = fopen([filename,'.txt'],'w');
             if fid == -1
                 error('Could not open %s.txt',filename);
@@ -97,7 +97,7 @@ for BG_index = 1:length(BG)
                 
                 
                 hEnc = NRLDPCEncoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m);
-                hDec = NRLDPCDecoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
+                hDec = NRLDPCDecoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'MaximumIterationCount',MaximumIterationCount);
                 
                 hEnc.K_prime_minus_L = K_prime(K_prime_index) - hEnc.L
                 hDec.K_prime_minus_L = K_prime(K_prime_index) - hDec.L;

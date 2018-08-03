@@ -1,4 +1,4 @@
-function plot_SNR_vs_K_prime(K_prime, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function plot_SNR_vs_K_prime(K_prime, R, CRC, BG, Modulation, rv_id_sequence, MaximumIterationCount, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % PLOT_SNR_VS_A Plots Signal to Noise Ratio (SNR) required to achieve a
 % particular Block Error Rate (BLER) as a function of block length, for
 % LDPC codes.
@@ -41,7 +41,7 @@ if nargin == 0
     BG = 1;
     Modulation = 'QPSK';
     rv_id_sequence = [0];
-    iterations = 50;
+    MaximumIterationCount = 50;
     target_block_errors = 100;
     target_BLER = 1e-2;
     EsN0_start = -2;
@@ -55,7 +55,7 @@ rng(seed);
 % Create a figure to plot the results.
 figure
 axes1 = axes;
-title(['3GPP New Radio LDPC code, ',CRC,', BG',num2str(BG),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
+title(['3GPP New Radio LDPC code, ',CRC,', BG',num2str(BG),', ',Modulation,', AWGN, iterations = ',num2str(MaximumIterationCount),', errors = ',num2str(target_block_errors)]);
 ylabel('Required E_s/N_0 [dB]');
 xlabel('K''');
 grid on
@@ -77,7 +77,7 @@ for R_index = 1:length(R)
     EsN0s = nan(1,length(K_prime));
     
     % Open a file to save the results into.
-    filename = ['results/SNR_vs_A_',num2str(target_BLER),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(seed)];
+    filename = ['results/SNR_vs_A_',num2str(target_BLER),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG),'_',Modulation,'_',num2str(MaximumIterationCount),'_',num2str(target_block_errors),'_',num2str(seed)];
     fid = fopen([filename,'.txt'],'w');
     if fid == -1
         error('Could not open %s.txt',filename);
@@ -100,7 +100,7 @@ for R_index = 1:length(R)
             
             
             hEnc = NRLDPCEncoder('BG',BG,'CRC',CRC,'E',E,'Q_m',hMod.Q_m);
-            hDec = NRLDPCDecoder('BG',BG,'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
+            hDec = NRLDPCDecoder('BG',BG,'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'MaximumIterationCount',MaximumIterationCount);
             
             hEnc.K_prime_minus_L = K_prime(K_prime_index) - hEnc.L
             hDec.K_prime_minus_L = K_prime(K_prime_index) - hDec.L;

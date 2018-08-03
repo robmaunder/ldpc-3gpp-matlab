@@ -45,8 +45,8 @@ classdef NRLDPCEncoder < NRLDPC
         end
         
         function c = append_CRC_and_padding(obj, b)
-            if length(b) ~= obj.K_prime_minus_L
-                error('ldpc_3gpp_matlab:Error','Length of b should be K_prime_minus_L.');
+            if size(b,1) ~= obj.K_prime_minus_L || size(b,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','b should be a column vector of length K_prime_minus_L.');
             end
             
             c = zeros(obj.K, 1);
@@ -68,8 +68,8 @@ classdef NRLDPCEncoder < NRLDPC
         
         % Implements Section 5.3.2 of TS38.212
         function d = LDPC_coding(obj, c)
-            if length(c) ~= obj.K
-                error('ldpc_3gpp_matlab:Error','Length of c should be K.');
+            if size(c,1) ~= obj.K || size(c,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','c should be a column vector of length K.');
             end
             
             d = zeros(obj.N,1);
@@ -96,8 +96,8 @@ classdef NRLDPCEncoder < NRLDPC
         
         % Implements Section 5.4.2.1 of TS38.212
         function e = bit_selection(obj, d)
-            if length(d) ~= obj.N
-                error('ldpc_3gpp_matlab:Error','Length of d should be N.');
+            if size(d,1) ~= obj.N || size(d,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','d should be a column vector of length N.');
             end
             
             e = zeros(obj.E,1);
@@ -115,8 +115,8 @@ classdef NRLDPCEncoder < NRLDPC
         
         % Implements Section 5.4.2.2 of TS38.212
         function f = bit_interleaving(obj, e)
-            if length(e) ~= obj.E
-                error('ldpc_3gpp_matlab:Error','Length of e should be E.');
+            if size(e,1) ~= obj.E || size(e,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','e should be a column vector of length E.');
             end
             
             f = zeros(obj.E,1);
