@@ -102,8 +102,8 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.4.2.2 of TS38.212
         function e_tilde = bit_interleaving(obj, f_tilde)
-            if length(f_tilde) ~= obj.E
-                error('ldpc_3gpp_matlab:Error','Length of f_tilde should be E.');
+            if size(f_tilde,1) ~= obj.E || size(f_tilde,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','f_tilde should be a column vector of length E.');
             end
             
             e_tilde = zeros(obj.E,1);
@@ -117,10 +117,10 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.4.2.1 of TS38.212
         function d_tilde = bit_selection(obj, e_tilde)
-            if length(e_tilde) ~= obj.E
-                error('ldpc_3gpp_matlab:Error','Length of e_tilde should be E.');
+             if size(e_tilde,1) ~= obj.E || size(e_tilde,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','e_tilde should be a column vector of length E.');
             end
-            
+             
             d_tilde = zeros(obj.N,1);
             d_tilde(max(obj.K_prime-2*obj.Z_c+1,1):obj.K-2*obj.Z_c) = NaN;
             
@@ -137,8 +137,8 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.3.2 of TS38.212
         function c_hat = LDPC_coding(obj, d_tilde)
-            if length(d_tilde) ~= obj.N
-                error('ldpc_3gpp_matlab:Error','Length of d_tilde should be N.');
+            if size(d_tilde,1) ~= obj.N || size(d_tilde,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','d_tilde should be a column vector of length N.');
             end
             
             cw_tilde = [zeros(2*obj.Z_c,1); d_tilde];
@@ -149,8 +149,8 @@ classdef NRLDPCDecoder < NRLDPC
         end
         
         function b_hat = append_CRC_and_padding(obj, c_hat)
-            if length(c_hat) ~= obj.K
-                error('ldpc_3gpp_matlab:Error','Length of c_hat should be K.');
+            if size(c_hat,1) ~= obj.K || size(c_hat,2) ~= 1
+                error('ldpc_3gpp_matlab:Error','c_hat should be a column vector of length K.');
             end
             
             b_hat = zeros(obj.K_prime_minus_L, 1);
