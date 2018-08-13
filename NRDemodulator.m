@@ -62,7 +62,13 @@ classdef NRDemodulator < matlab.System
             else
                 error('ldpc_3gpp_matlab:UnsupportedParameters','Unsupported modulation');
             end
-        end        
+        end      
+        
+        function set.Variance(obj, Variance)
+            obj.hMod.Variance = Variance;
+            obj.Variance = Variance;
+        end
+        
     end
     
     
