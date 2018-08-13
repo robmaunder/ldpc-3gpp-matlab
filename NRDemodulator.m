@@ -22,11 +22,7 @@ classdef NRDemodulator < matlab.System
     properties(Access = private, Hidden)
         hMod
     end
-    
-    methods(Access = protected)
-
-    end
-    
+        
     methods
         function obj = NRDemodulator(varargin)
             setProperties(obj,nargin,varargin{:});
@@ -64,11 +60,6 @@ classdef NRDemodulator < matlab.System
             end
         end      
         
-        function set.Variance(obj, Variance)
-            obj.hMod.Variance = Variance;
-            obj.Variance = Variance;
-        end
-        
     end
     
     
@@ -94,9 +85,8 @@ classdef NRDemodulator < matlab.System
             tx = step(obj.hMod, bits);
         end
         
-        function resetImpl(obj)
-            
+        function processTunedPropertiesImpl(obj)
+            obj.hMod.Variance = obj.Variance;
         end
-        
     end
 end
