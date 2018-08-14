@@ -34,11 +34,11 @@ if nargin == 0
     BG = 2;
     Modulation = 'QPSK';
     rv_id_sequence = [0];
-    iterations = 50;
+    iterations = 10;
     target_block_errors = 10;
     target_BLER = 1e-3;
     EsN0_start = -2;
-    EsN0_delta = 0.5;
+    EsN0_delta = 0.1;
     seed = 0;
 end
 
@@ -146,7 +146,7 @@ for BG_index = 1:length(BG)
                             
                             % Determine if we have a block error
                             if ~isequal(b,b_hat)
-                                block_error_counts(end) = block_error_counts(end) + 1;
+                                block_error_counts(end) = block_error_counts(end) + 1
                             end
                             
                             % Accumulate the number of blocks that have been simulated
