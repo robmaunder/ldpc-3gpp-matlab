@@ -146,7 +146,7 @@ for BG_index = 1:length(BG)
                             
                             % Determine if we have a block error
                             if ~isequal(b,b_hat)
-                                block_error_counts(end) = block_error_counts(end) + 1
+                                block_error_counts(end) = block_error_counts(end) + 1;
                             end
                             
                             % Accumulate the number of blocks that have been simulated
