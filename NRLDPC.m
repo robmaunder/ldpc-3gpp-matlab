@@ -60,20 +60,18 @@ classdef NRLDPC < matlab.System
         %   of TS38.212. A full buffer is used if I_LBRM = 0 and a limited buffer
         %   is used otherwise.
         I_LBRM = 0; % Default value
+    
+        %N_REF Circular buffer limit
+        %   Specifies limit imposed upon the lenghth of the circular buffer used
+        %   for rate matching, when I_LBRM is non-zero, as defined in Section
+        %   5.4.2.1 of TS38.212. N_ref is ignored when I_LBRM is zero.
+        N_ref = 132; % Default value
     end
 
     % Tunable properties can be changed anytime, even after the step 
     % function has been called.
     properties
         
-        %N_REF Circular buffer limit
-        %   Specifies limit imposed upon the lenghth of the circular buffer used
-        %   for rate matching, when I_LBRM is non-zero, as defined in Section
-        %   5.4.2.1 of TS38.212. N_ref is ignored when I_LBRM is zero. N_ref is
-        %   tunable so that it can be changed for successive retransmissions during
-        %   HARQ.
-        N_ref = 132; % Default value
-
         %RV_ID Redundancy version number 
         %   Specifies the redundancy version number, as defined in Section 5.4.2.1
         %   of TS38.212. rv_id is tunable so that it can be changed for successive
