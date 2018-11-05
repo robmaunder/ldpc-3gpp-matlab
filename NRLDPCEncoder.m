@@ -25,7 +25,9 @@ classdef NRLDPCEncoder < NRLDPC
         % release(a);
         % step(a); % <- setupImpl executed here
         function setupImpl(obj)
-            obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCPolynomial);
+            if obj.L > 0
+                obj.hCRCGenerator = comm.CRCGenerator('Polynomial',obj.CRCPolynomial);
+            end
             obj.hLDPCEncoder = comm.LDPCEncoder('ParityCheckMatrix',obj.H);
         end
         
@@ -56,14 +58,17 @@ classdef NRLDPCEncoder < NRLDPC
                 c(k+1) = b(s+1);
                 s = s + 1;
             end
-            bp = step(obj.hCRCGenerator, b);
-            p = bp(obj.K_prime_minus_L+1:obj.K_prime);
-            for k = obj.K_prime_minus_L:obj.K_prime-1
-                c(k+1) = p(k+obj.L-obj.K_prime+1);
+            if obj.L > 0
+                bp = step(obj.hCRCGenerator, b);
+                p = bp(obj.K_prime_minus_L+1:obj.K_prime);
+                for k = obj.K_prime_minus_L:obj.K_prime-1
+                    c(k+1) = p(k+obj.L-obj.K_prime+1);
+                end
             end
             for k = obj.K_prime:obj.K-1
                 c(k+1) = NaN;
             end
+            
         end
         
         % Implements Section 5.3.2 of TS38.212
