@@ -27,17 +27,11 @@ classdef NRLDPC < matlab.System
         %   7.2.2 of TS38.212.
         BG = 1; % Default value
         
-        %K_PRIME_MINUS_L Number of information bits
-        %   If we are considering the LDPC coding of a transport block that is not
-        %   long enough to be decomposed into two or more code blocks, then the
-        %   number of information bits in the transport block is given by A, as
-        %   defined in Sections 6.2.1 and 6.3.1 of TS38.212. If we are considering
-        %   one of the code blocks within a transport block that is long enough to 
-        %   be decomposed into two or more code blocks, then the number of 
-        %   information bits in the code block is given by K'-L, as defined in 
-        %   Section 5.2.2 of TS38.212.
-        K_prime_minus_L = 20; % Default value
-        
+        %A Transport block size
+        %   The number of information bits in a transport block is given by
+        %   A, as defined in Sections 6.2.1 and 6.3.1 of TS38.212.
+        A = 44; % Default value
+                
         %I_LBRM Enable limited buffer rate matching
         %   Specifies whether or not a limit is imposed upon the lenghth of the
         %   circular buffer used for rate matching, as defined in Section 5.4.2.1
@@ -45,11 +39,11 @@ classdef NRLDPC < matlab.System
         %   is used otherwise.
         I_LBRM = 0; % Default value
     
-        %N_REF Circular buffer limit
-        %   Specifies limit imposed upon the lenghth of the circular buffer used
-        %   for rate matching, when I_LBRM is non-zero, as defined in Section
-        %   5.4.2.1 of TS38.212. N_ref is ignored when I_LBRM is zero.
-        N_ref = 132; % Default value
+        %TBS_LBRM Transport block size for limited buffer rate matching
+        %   Specifies the transport block size for limited buffer rate
+        %   matching, as defined in Section 5.4.2.1 of TS38.212.
+        TBS_LBRM = 132;
+        
     end
 
     % Tunable properties can be changed anytime, even after the step 
@@ -62,11 +56,12 @@ classdef NRLDPC < matlab.System
         %   retransmissions during HARQ.
         rv_id = 0; % Default value
         
-        %E Number of encoded bits        
-        %   Specifies the number of encoded bits in the output bit sequence after
-        %   rate matching, as defined in Section 5.4.2.1 of TS38.212. E is tunable
-        %   so that it can be changed for successive retransmissions during HARQ.
-        E = 132; % Default value
+        %G Number of encoded bits used to represent the transport block
+        %   Specifies the number of encoded bits in the output bit sequence
+        %   after code block concatentation, as defined in Section 5.4.2.1
+        %   of TS38.212. G is tunable so that it can be changed for successive
+        %   retransmissions during HARQ.
+        G = 132; 
         
         %Q_M Number of bits per modulation symbol 
         %   Specifies the number of bits per PSK or QAM symbol, which is (against
@@ -74,6 +69,19 @@ classdef NRLDPC < matlab.System
         %   TS38.212. Q_m is tunable so that it can be changed for successive
         %   retransmissions during HARQ.
         Q_m = 1; % Default value
+        
+        %N_L Number of transmission layers
+        %   Specifies the number of transmission layers that the transport
+        %   block is mapped onto. N_L is tunable so that it can be changed
+        %   for successive retransmissions during HARQ.
+        N_L = 1; % Default value
+        
+        %CBGTI Code block group transmission information
+        %   A vector that specifies the indices of code blocks that should be excluded from
+        %   retransmission during HARQ, where the first code block has an
+        %   index of 0. CBGTI is tunable so that it can be changed
+        %   for successive retransmissions during HARQ.
+        CBGTI = []; % Default value
     end
         
     % Protected dependent properties cannot be set manually. Instead, they
@@ -87,24 +95,11 @@ classdef NRLDPC < matlab.System
         %   while short transport blocks are appended with a CRC16, as
         %   described in Sections 6.2.1 and 7.2.1 of TS38.212.
         transport_block_CRC
-
-        %CODE_BLOCK_CRC Code block Cyclic Redundancy Check (CRC) selection
-        %   Selects between 'None' or 'CRC24B', as defined in Section 5.1
-        %   of TS38.212. If the transport block (with its appended CRC) is
-        %   sufficiently long, then it is decomposed into two or more code
-        %   blocks, each of which is appended with a CRC24B, as described
-        %   in Section 5.2.2 of TS38.212.
-        code_block_CRC
         
         %TRANSPORT_BLOCK_CRC_POLYNOMIAL Transport block Cyclic Redundancy Check (CRC) polynomial 
         %   Specifies the polynomial used when appending a CRC to a
         %   transport block, as defined in Section 5.1 of TS38.212.
         transport_block_CRC_polynomial
-        
-        %CODE_BLOCK_CRC_POLYNOMIAL Code block Cyclic Redundancy Check (CRC) polynomial 
-        %   Specifies the polynomial used when appending a CRC to a code
-        %   block, as defined in Section 5.1 of TS38.212.
-        code_block_CRC_polynomial
         
         %TRANSPORT_BLOCK_L Transport block Cyclic Redundancy Check (CRC) length
         %   Specifies the length of the CRC appended to a transport block, as
@@ -112,13 +107,45 @@ classdef NRLDPC < matlab.System
         %   as defined in Sections 6.2.1 and 6.3.1 of TS38.212.
         transport_block_L
 
+        %B Number of information and CRC bits in the transport block
+        %   Number of information and CRC bits in the transport block, as
+        %   defined in Section 5.1 of TS38.212.
+        B
+        
+        %K_CB Maximum code block size
+        %   Maximum code block size, as specified in Section 5.2.2 of
+        %   TS38.212.
+        K_cb
+        
+        %CODE_BLOCK_CRC Code block Cyclic Redundancy Check (CRC) selection
+        %   Selects between 'None' or 'CRC24B', as defined in Section 5.1
+        %   of TS38.212. If the transport block (with its appended CRC) is
+        %   sufficiently long, then it is decomposed into two or more code
+        %   blocks, each of which is appended with a CRC24B, as described
+        %   in Section 5.2.2 of TS38.212.
+        code_block_CRC
+                
+        %CODE_BLOCK_CRC_POLYNOMIAL Code block Cyclic Redundancy Check (CRC) polynomial 
+        %   Specifies the polynomial used when appending a CRC to a code
+        %   block, as defined in Section 5.1 of TS38.212.
+        code_block_CRC_polynomial
+        
         %CODE_BLOCK_L Code block Cyclic Redundancy Check (CRC) length
         %   Specifies the length of the CRC appended to a code block, as
         %   defined in Section 5.1 of TS38.212. The length of the CRC is
         %   given by L, as defined in Section 5.2.2 of TS38.212.
         code_block_L
+               
+        %C Number of code blocks
+        %   Specifies the number of code blocks in the transport block, as
+        %   defined in Section 5.2.2 of TS38.212.
+        C
         
-        %K_PRIME Number of information and CRC bits
+        %B_PRIME Parameter B_prime
+        %   B_prime is calculated in Section 5.2.2 of TS38.212.
+        B_prime        
+        
+        %K_PRIME Number of information and CRC bits in a code block
         %   Specifies the total number of information and CRC bits, as defined in
         %   Section 5.2.2 of TS38.212.
         K_prime
@@ -162,22 +189,49 @@ classdef NRLDPC < matlab.System
         %   TS38.212.
         N
         
+        %N_REF Circular buffer limit
+        %   Specifies limit imposed upon the lenghth of the circular buffer used
+        %   for rate matching, when I_LBRM is non-zero, as defined in Section
+        %   5.4.2.1 of TS38.212. N_ref is ignored when I_LBRM is zero.
+        N_ref
+        
         %N_CB Rate matching buffer length         
         %   Specifies the length of the rate matching buffer, as defined in Section
         %   5.4.2.1 of TS38.212.
         N_cb
         
+        %CBGTI_FLAGS Code block group transmission information
+        %   A binary vector of length C, where elements having the value 0
+        %   indicate that the corresponding codeblocks should be excluded
+        %   from retransmission during HARQ and elements having the value 1
+        %   indicate that the corresponding codeblocks should be included
+        %   in retransmission during HARQ.
+        CBGTI_flags
+        
+        %C_PRIME Number of scheduled code blocks 
+        %   Specifies the number of scheduled code blocks of the transport
+        %   block if CBGTI is present in the DCI scheduling the transport
+        %   block, as defined in Section 5.4.2.1 of TS38.212.
+        C_prime
+        
+        %E_R Rate matching output sequence lengths
+        %   A vector specifying the rate matching output sequence length of
+        %   each of the C code blocks, as defined in Section 5.4.2.1 of
+        %   TS38.212.
+        E_r
+        
         %K_0 Redundancy version starting position        
         %   Specifies the starting position of the redundancy version rv_id, as
         %   defined in Table 5.4.2.1-2 of TS38.212.
-        k_0
+        k_0        
+        
     end
         
     % Methods used to set and get the values of properties. 
     methods
         
         % Constructor allowing properties to be set according to e.g.
-        % a = NRLDPC('BG',1,'K_prime_minus_L',20,'E',132);
+        % a = NRLDPC('BG',1,'A',20,'G',132);
         function obj = NRLDPC(varargin)
             setProperties(obj,nargin,varargin{:});
         end
@@ -190,18 +244,18 @@ classdef NRLDPC < matlab.System
             obj.BG = BG;
         end
         
-        function set.K_prime_minus_L(obj, K_prime_minus_L)
-            if K_prime_minus_L < 0
-                error('ldpc_3gpp_matlab:UnsupportedParameters','K_prime_minus_L should not be negative.');
+        function set.A(obj, A)
+            if A < 0
+                error('ldpc_3gpp_matlab:UnsupportedParameters','A should not be negative.');
             end
-            obj.K_prime_minus_L = K_prime_minus_L;
+            obj.A = A;
         end
         
-        function set.N_ref(obj, N_ref)
-            if N_ref < 0
-                error('ldpc_3gpp_matlab:UnsupportedParameters','N_ref should not be negative.');
+        function set.TBS_LBRM(obj, TBS_LBRM)
+            if TBS_LBRM < 0
+                error('ldpc_3gpp_matlab:UnsupportedParameters','TBS_LBRM should not be negative.');
             end
-            obj.N_ref = N_ref;
+            obj.TBS_LBRM = TBS_LBRM;
         end
         
         % Valid values of rv_id are described in Section 5.4.2.1 of 
@@ -213,11 +267,11 @@ classdef NRLDPC < matlab.System
             obj.rv_id = rv_id;
         end
         
-        function set.E(obj, E)
-            if E < 0
-                error('ldpc_3gpp_matlab:UnsupportedParameters','E should not be negative.');
+        function set.G(obj, G)
+            if G < 0
+                error('ldpc_3gpp_matlab:UnsupportedParameters','G should not be negative.');
             end
-            obj.E = E;
+            obj.G = G;
         end
         
         % Valid values of Q_m are derived from TS38.211.
@@ -227,22 +281,24 @@ classdef NRLDPC < matlab.System
             end
             obj.Q_m = Q_m;
         end
-        
+
+        % Up to 4 layers are supported in the PUSCH, as specified in
+        % Section 6.3.1.3 of TS38.211. Up to 4 layers are supported per
+        % codeword in the PDSCH, as specified in Section 7.3.1.3 of
+        % TS38.211.
+        function set.N_L(obj, N_L)
+            if N_L < 1 || N_L > 4
+                error('ldpc_3gpp_matlab:UnsupportedParameters','N_L should be in the range 1 to 4.');
+            end
+            obj.N_L = N_L;
+        end
+
         % Transport block CRC is decided in Sections 6.2.1 and 7.2.1 of TS38.212.
         function transport_block_CRC = get.transport_block_CRC(obj)
-            if true % TODO
-                transport_block_CRC = 'CRC16';
-            else
+            if obj.A > 3824
                 transport_block_CRC = 'CRC24A';
-            end
-        end
-        
-        % Code block CRC is decided in Section 5.2.2 of TS38.212.
-        function code_block_CRC = get.code_block_CRC(obj)
-            if true % TODO
-                code_block_CRC = 'CRC24B';
             else
-                code_block_CRC = 'None';
+                transport_block_CRC = 'CRC16';
             end
         end
         
@@ -251,14 +307,48 @@ classdef NRLDPC < matlab.System
             [transport_block_CRC_polynomial,~] = get_3gpp_crc_polynomial(obj.transport_block_CRC);
         end
 
-        % CRC polynomials are given in Section 5.1 of TS38.212.
-        function code_block_CRC_polynomial = get.code_block_CRC_polynomial(obj)
-            [code_block_CRC_polynomial,~] = get_3gpp_crc_polynomial(obj.code_block_CRC);
-        end
-        
         % CRC lengths are given in Section 5.1 of TS38.212.
         function transport_block_L = get.transport_block_L(obj)
             [~,transport_block_L] = get_3gpp_crc_polynomial(obj.transport_block_CRC);
+        end
+        
+        % B is calculated in Section 5.1 of TS38.212
+        function B = get.B(obj)
+            B = obj.A + obj.transport_block_L;
+        end
+        
+        % K_cb is calculated in Section 5.2.2 of TS38.212
+        function K_cb = get.K_cb(obj)
+            if obj.BG == 1
+                K_cb = 8448;
+            elseif obj.BG == 2
+                K_cb = 3840;
+            else
+                error('ldpc_3gpp_matlab:UnsupportedParameters','BG must be 1 or 2');
+            end
+        end
+        
+        % C is calculated in Section 5.2.2 of TS38.212
+        function C = get.C(obj)
+            if obj.B <= obj.K_cb
+                C = 1;
+            else
+                C = ceil(obj.B/(obj.K_cb-obj.code_block_L));
+            end            
+        end
+                
+        % Code block CRC is decided in Section 5.2.2 of TS38.212.
+        function code_block_CRC = get.code_block_CRC(obj)
+            if obj.B <= obj.K_cb
+                code_block_CRC = 'None';
+            else
+                code_block_CRC = 'CRC24B';
+            end            
+        end
+        
+        % CRC polynomials are given in Section 5.1 of TS38.212.
+        function code_block_CRC_polynomial = get.code_block_CRC_polynomial(obj)
+            [code_block_CRC_polynomial,~] = get_3gpp_crc_polynomial(obj.code_block_CRC);
         end
         
         % CRC lengths are given in Section 5.1 of TS38.212.
@@ -266,8 +356,18 @@ classdef NRLDPC < matlab.System
             [~,code_block_L] = get_3gpp_crc_polynomial(obj.code_block_CRC);
         end
         
+        % B_prime is calculated in Section 5.2.2 of TS38.212
+        function B_prime = get.B_prime(obj)
+            if obj.B <= obj.K_cb
+                B_prime = obj.B;
+            else
+                B_prime = obj.B + obj.C*obj.code_block_L;
+            end            
+        end            
+        
+        % The calculation of K_prime is given in Section 5.2.2 of TS38.212.
         function K_prime = get.K_prime(obj)
-            K_prime = obj.K_prime_minus_L + obj.L;
+            K_prime = obj.B_prime/obj.C;
         end
         
         % The calculation of K_b is given in Section 5.2.2 of TS38.212.
@@ -333,12 +433,46 @@ classdef NRLDPC < matlab.System
             end
         end
         
+        % The calculation of N_ref is given in Section 5.4.2.1 of TS38.212.
+        function N_ref = get.N_ref(obj)
+            R_LBRM = 2/3;
+            N_ref = floor(obj.TBS_LBRM/(obj.C*R_LBRM));
+        end
+        
         % The calculation of N_cb is given in Section 5.4.2.1 of TS38.212.
         function N_cb = get.N_cb(obj)
             if obj.I_LBRM == 0
                 N_cb = obj.N;
             else
                 N_cb = min(obj.N, obj.N_ref);
+            end
+        end
+        
+        function CBGTI_flags = get.CBGTI_flags(obj)
+            CBGTI_flags = ones(1,obj.C);
+            CBGTI_flags(obj.CBGTI(obj.CBGTI<obj.C)+1) = 0;            
+        end
+        
+        % The calculation of C_prime is given in Section 5.4.2.1 of TS38.212.
+        function C_prime = get.C_prime(obj)
+            C_prime = sum(obj.CBGTI_flags);
+        end
+                
+        % The calculation of E_r is given in Section 5.4.2.1 of TS38.212.
+        function E_r = get.E_r(obj)
+            j=0;
+            E_r = zeros(1,obj.C);
+            for r = 0:obj.C-1
+                if obj.CBGTI_flags(r+1) == 0
+                    E_r(r+1) = 0;
+                else
+                    if j <= obj.C_prime-mod(obj.G/(obj.N_L*obj.Q_m),obj.C_prime)-1
+                        E_r(r+1) = obj.N_L*obj.Q_m*floor(obj.G/(obj.N_L*obj.Q_m*obj.C_prime));
+                    else
+                        E_r(r+1) = obj.N_L*obj.Q_m*ceil(obj.G/(obj.N_L*obj.Q_m*obj.C_prime));
+                    end
+                    j = j + 1;
+                end
             end
         end
         
