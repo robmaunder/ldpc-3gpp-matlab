@@ -507,4 +507,20 @@ classdef NRLDPC < matlab.System
             end
         end
     end
+    
+    methods (Access = protected)
+        function stepImpl(obj)
+
+        end
+        
+        function validatePropertiesImpl(obj)
+            if mod(obj.B_prime,obj.C) ~= 0
+                error('ldpc_3gpp_matlab:UnsupportedParameters', 'B_prime must be a multiple of C.');
+            end
+            
+            if mod(obj.G,obj.Q_m*obj.N_L) ~= 0
+                error('ldpc_3gpp_matlab:UnsupportedParameters', 'G must be a multiple of Q_m*N_L.');
+            end
+        end
+    end
 end
