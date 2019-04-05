@@ -28,17 +28,17 @@ function plot_BLER_vs_SNR(K_prime, R, CRC, BG, Modulation, rv_id_sequence, itera
 
 % Default values
 if nargin == 0
-    K_prime = 500;
+    K_prime = 440;
     R = 1/3;
     CRC = 'CRC24B';
-    BG = 2;
+    BG = 1;
     Modulation = 'QPSK';
     rv_id_sequence = [0];
-    iterations = 10;
+    iterations = 50;
     target_block_errors = 10;
     target_BLER = 1e-3;
-    EsN0_start = -2;
-    EsN0_delta = 0.1;
+    EsN0_start = -25;
+    EsN0_delta = 0.5;
     seed = 0;
 end
 
