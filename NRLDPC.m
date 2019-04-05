@@ -27,22 +27,6 @@ classdef NRLDPC < matlab.System
         %   7.2.2 of TS38.212.
         BG = 1; % Default value
         
-        %CRC Cyclic Redundancy Check (CRC) selection
-        %   Selects between 'CRC16', 'CRC24A' or 'CRC24B', as defined in Section
-        %   5.1 of TS38.212. Alternatively, 'None' can be used to remove the CRC.
-        %   Long transport blocks are appended with a CRC24A, while short transport
-        %   blocks are appended with a CRC16, as described in Sections 6.2.1 and
-        %   7.2.1 of TS38.212. If the transport block (with appended CRC) is
-        %   sufficiently long, then it is decomposed into two or more code blocks,
-        %   each of which is appended with a CRC24B, as described in Section 5.2.2
-        %   of TS38.212. The use of CRC16 or CRC24 in this code implies that we are
-        %   considering the LDPC coding of a transport block that is not long
-        %   enough to be decomposed into two or more code blocks. The use of CRC24B
-        %   in this code implies that we are considering one of the code blocks
-        %   within a transport block that is long enough to be decomposed into two
-        %   or more code blocks.
-        CRC = 'CRC24B'; % Default value
-                
         %K_PRIME_MINUS_L Number of information bits
         %   If we are considering the LDPC coding of a transport block that is not
         %   long enough to be decomposed into two or more code blocks, then the
@@ -97,21 +81,42 @@ classdef NRLDPC < matlab.System
     % properties.
     properties(Dependent, SetAccess = protected)
         
-        %CRCPOLYNOMIAL Cyclic Redundancy Check (CRC) polynomial 
-        %   Specifies the polynomial used when appending a CRC to the information
-        %   bits, as defined in Section 5.1 of TS38.212.
-        CRCPolynomial
+        %TRANSPORT_BLOCK_CRC Transport block Cyclic Redundancy Check (CRC) selection
+        %   Selects between 'CRC16' or 'CRC24A', as defined in Section 5.1
+        %   of TS38.212. Long transport blocks are appended with a CRC24A,
+        %   while short transport blocks are appended with a CRC16, as
+        %   described in Sections 6.2.1 and 7.2.1 of TS38.212.
+        transport_block_CRC
+
+        %CODE_BLOCK_CRC Code block Cyclic Redundancy Check (CRC) selection
+        %   Selects between 'None' or 'CRC24B', as defined in Section 5.1
+        %   of TS38.212. If the transport block (with its appended CRC) is
+        %   sufficiently long, then it is decomposed into two or more code
+        %   blocks, each of which is appended with a CRC24B, as described
+        %   in Section 5.2.2 of TS38.212.
+        code_block_CRC
         
-        %L Cyclic Redundancy Check (CRC) length
-        %   Specifies the length of the CRC appended to the information bits, as
-        %   defined in Section 5.1 of TS38.212. If we are considering the LDPC
-        %   coding of a transport block that is not long enough to be decomposed
-        %   into two or more code blocks, then the length of the CRC is given by L,
-        %   as defined in Sections 6.2.1 and 6.3.1 of TS38.212. If we are
-        %   considering one of the code blocks within a transport block that is
-        %   long enough to be decomposed into two or more code blocks, then length
-        %   of the CRC is given by L, as defined in Section 5.2.2 of TS38.212.
-        L
+        %TRANSPORT_BLOCK_CRC_POLYNOMIAL Transport block Cyclic Redundancy Check (CRC) polynomial 
+        %   Specifies the polynomial used when appending a CRC to a
+        %   transport block, as defined in Section 5.1 of TS38.212.
+        transport_block_CRC_polynomial
+        
+        %CODE_BLOCK_CRC_POLYNOMIAL Code block Cyclic Redundancy Check (CRC) polynomial 
+        %   Specifies the polynomial used when appending a CRC to a code
+        %   block, as defined in Section 5.1 of TS38.212.
+        code_block_CRC_polynomial
+        
+        %TRANSPORT_BLOCK_L Transport block Cyclic Redundancy Check (CRC) length
+        %   Specifies the length of the CRC appended to a transport block, as
+        %   defined in Section 5.1 of TS38.212. The length of the CRC is given by L,
+        %   as defined in Sections 6.2.1 and 6.3.1 of TS38.212.
+        transport_block_L
+
+        %CODE_BLOCK_L Code block Cyclic Redundancy Check (CRC) length
+        %   Specifies the length of the CRC appended to a code block, as
+        %   defined in Section 5.1 of TS38.212. The length of the CRC is
+        %   given by L, as defined in Section 5.2.2 of TS38.212.
+        code_block_L
         
         %K_PRIME Number of information and CRC bits
         %   Specifies the total number of information and CRC bits, as defined in
@@ -167,12 +172,7 @@ classdef NRLDPC < matlab.System
         %   defined in Table 5.4.2.1-2 of TS38.212.
         k_0
     end
-    
-    % A StringSet specifies the valid values of string parameters.
-    properties (Hidden,Constant)
-        CRCSet = matlab.system.StringSet({'CRC24A','CRC24B','CRC16','None'});
-    end    
-    
+        
     % Methods used to set and get the values of properties. 
     methods
         
@@ -228,16 +228,44 @@ classdef NRLDPC < matlab.System
             obj.Q_m = Q_m;
         end
         
+        % Transport block CRC is decided in Sections 6.2.1 and 7.2.1 of TS38.212.
+        function transport_block_CRC = get.transport_block_CRC(obj)
+            if true % TODO
+                transport_block_CRC = 'CRC16';
+            else
+                transport_block_CRC = 'CRC24A';
+            end
+        end
+        
+        % Code block CRC is decided in Section 5.2.2 of TS38.212.
+        function code_block_CRC = get.code_block_CRC(obj)
+            if true % TODO
+                code_block_CRC = 'CRC24B';
+            else
+                code_block_CRC = 'None';
+            end
+        end
+        
         % CRC polynomials are given in Section 5.1 of TS38.212.
-        function CRCPolynomial = get.CRCPolynomial(obj)
-            [CRCPolynomial,~] = get_3gpp_crc_polynomial(obj.CRC);
+        function transport_block_CRC_polynomial = get.transport_block_CRC_polynomial(obj)
+            [transport_block_CRC_polynomial,~] = get_3gpp_crc_polynomial(obj.transport_block_CRC);
         end
 
+        % CRC polynomials are given in Section 5.1 of TS38.212.
+        function code_block_CRC_polynomial = get.code_block_CRC_polynomial(obj)
+            [code_block_CRC_polynomial,~] = get_3gpp_crc_polynomial(obj.code_block_CRC);
+        end
+        
         % CRC lengths are given in Section 5.1 of TS38.212.
-        function L = get.L(obj)
-            [~,L] = get_3gpp_crc_polynomial(obj.CRC);
+        function transport_block_L = get.transport_block_L(obj)
+            [~,transport_block_L] = get_3gpp_crc_polynomial(obj.transport_block_CRC);
         end
-
+        
+        % CRC lengths are given in Section 5.1 of TS38.212.
+        function code_block_L = get.code_block_L(obj)
+            [~,code_block_L] = get_3gpp_crc_polynomial(obj.code_block_CRC);
+        end
+        
         function K_prime = get.K_prime(obj)
             K_prime = obj.K_prime_minus_L + obj.L;
         end
