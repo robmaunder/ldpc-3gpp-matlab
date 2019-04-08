@@ -5,8 +5,8 @@ while true
     
     R = rand;
     I_LBRM = round(rand);
-    TBS_LBRM = randi(100000);
-    A = randi(100000);
+    A = ceil(100000^rand);
+    TBS_LBRM = round(A/rand);
     a = round(rand(A,1));
     if A<=292 || (A <= 3824 && R <= 0.67) || R<=0.25
         BG = 2;
@@ -17,7 +17,7 @@ while true
     Q_m_index = randi(5);
     Q_m = Q_m_values(Q_m_index);
     N_L = randi(4);
-    G = Q_m*N_L*round(randi(100000)/Q_m/N_L);
+    G = Q_m*N_L*round(A/rand/Q_m/N_L);
     rv_id = randi([0 3]);
     
     
@@ -45,7 +45,7 @@ while true
     encUL.TargetCodeRate = R;
     encUL.LimitedBufferRateMatching = I_LBRM == 1;
     if I_LBRM == 1
-        encUL.LimitedBufferSize = TBS_LBRM;
+        encUL.LimitedBufferSize = enc.N_ref;
     end
     setTransportBlock(encUL, a);
     Q_m_strings = {'pi/2-BPSK','QPSK','16QAM','64QAM','256QAM'};
