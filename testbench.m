@@ -52,11 +52,9 @@ while true
     Q_m_string = Q_m_strings{Q_m_index};
     g_matlab = encUL(Q_m_string,N_L,G,rv_id);
     
-    fprintf("test=%d\tBG=%d\tA=%d\tI_LBRM=%d\tTBS_LBRM=%d\trv_id=%d\tG=%d\tQ_m=%d\tN_L=%d\t", test_count,BG,A,I_LBRM,TBS_LBRM,rv_id,G,Q_m,N_L);
+    fprintf("test=%d\tBG=%d\tA=%d\tI_LBRM=%d\tTBS_LBRM=%d\trv_id=%d\tG=%d\tQ_m=%d\tN_L=%d\n", test_count,BG,A,I_LBRM,TBS_LBRM,rv_id,G,Q_m,N_L);
     if ~isequal(g,g_matlab)
-        fprintf("ERROR\n");
-    else
-        fprintf("OK\n");
+        error('Mismatch!');
     end
     
     
