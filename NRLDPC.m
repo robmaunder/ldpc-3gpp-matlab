@@ -42,7 +42,7 @@ classdef NRLDPC < matlab.System
         %TBS_LBRM Transport block size for limited buffer rate matching
         %   Specifies the transport block size for limited buffer rate
         %   matching, as defined in Section 5.4.2.1 of TS38.212.
-        TBS_LBRM = 132;
+        TBS_LBRM = inf;
         
     end
 
