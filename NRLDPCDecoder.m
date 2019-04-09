@@ -116,7 +116,7 @@ classdef NRLDPCDecoder < NRLDPC
             %             end
             obj.d_tilde_buffer = cell(obj.C,1);
             for r=0:obj.C-1
-                obj.d_tilde_buffer{r+1} = zeros(obj.N,1);
+                obj.d_tilde_buffer{r+1} = zeros(obj.N_cb,1);
             end
             
             obj.b_hat_buffer = zeros(obj.B,1);
@@ -209,8 +209,8 @@ classdef NRLDPCDecoder < NRLDPC
                 end
                 
                 if obj.I_HARQ ~= 0
-                    d_tilde{r+1} = d_tilde{r+1} + obj.d_tilde_buffer{r+1};
-                    obj.d_tilde_buffer{r+1} = d_tilde{r+1};
+                    d_tilde{r+1}(1:obj.N_cb) = d_tilde{r+1}(1:obj.N_cb) + obj.d_tilde_buffer{r+1};
+                    obj.d_tilde_buffer{r+1} = d_tilde{r+1}(1:obj.N_cb);
                 end
             end
         end
@@ -295,7 +295,7 @@ classdef NRLDPCDecoder < NRLDPC
         function resetImpl(obj)
             obj.d_tilde_buffer = cell(obj.C,1);
             for r=0:obj.C-1
-                obj.d_tilde_buffer{r+1} = zeros(obj.N,1);
+                obj.d_tilde_buffer{r+1} = zeros(obj.N_cb,1);
             end
             
             obj.b_hat_buffer = zeros(obj.B,1);
