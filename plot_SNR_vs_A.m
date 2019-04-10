@@ -1,4 +1,4 @@
-function plot_SNR_vs_K_prime(K_prime, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function plot_SNR_vs_A(A, R, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % PLOT_SNR_VS_A Plots Signal to Noise Ratio (SNR) required to achieve a
 % particular Block Error Rate (BLER) as a function of block length, for
 % LDPC codes.
@@ -35,9 +35,8 @@ function plot_SNR_vs_K_prime(K_prime, R, CRC, BG, Modulation, rv_id_sequence, it
 
 % Default values
 if nargin == 0
-    K_prime = (1000:1000:8000);
+    A = (1000:1000:8000);
     R = 1/3;
-    CRC = 'CRC24B';
     BG = 1;
     Modulation = 'QPSK';
     rv_id_sequence = [0];
@@ -55,9 +54,9 @@ rng(seed);
 % Create a figure to plot the results.
 figure
 axes1 = axes;
-title(['3GPP New Radio LDPC code, ',CRC,', BG',num2str(BG),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
+title(['3GPP New Radio LDPC code, BG',num2str(BG),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
 ylabel('Required E_s/N_0 [dB]');
-xlabel('K''');
+xlabel('A');
 grid on
 hold on
 drawnow
@@ -71,13 +70,13 @@ for R_index = 1:length(R)
     
     % Create the plot
     plots(R_index) = plot(nan,'Parent',axes1);
-    set(plots(R_index),'XData',K_prime);
+    set(plots(R_index),'XData',A);
     legend(cellstr(num2str(R(1:R_index)', 'R=%0.2f')),'Location','eastoutside');
     
-    EsN0s = nan(1,length(K_prime));
+    EsN0s = nan(1,length(A));
     
     % Open a file to save the results into.
-    filename = ['results/SNR_vs_A_',num2str(target_BLER),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(seed)];
+    filename = ['results/SNR_vs_A_',num2str(target_BLER),'_',num2str(R(R_index)),'_',num2str(BG),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(seed)];
     fid = fopen([filename,'.txt'],'w');
     if fid == -1
         error('Could not open %s.txt',filename);
@@ -85,7 +84,7 @@ for R_index = 1:length(R)
     
     
     % Consider each information block length in turn
-    for K_prime_index = 1:length(K_prime)
+    for A_index = 1:length(A)
         
         found_start = false;
         
@@ -96,14 +95,11 @@ for R_index = 1:length(R)
             prev_BLER = nan;
             EsN0 = EsN0_start;
             prev_EsN0 = nan;
-            E = round((K_prime(K_prime_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
+            G = round((A(A_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
             
             
-            hEnc = NRLDPCEncoder('BG',BG,'CRC',CRC,'E',E,'Q_m',hMod.Q_m);
-            hDec = NRLDPCDecoder('BG',BG,'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
-            
-            hEnc.K_prime_minus_L = K_prime(K_prime_index) - hEnc.L
-            hDec.K_prime_minus_L = K_prime(K_prime_index) - hDec.L;
+            hEnc = NRLDPCEncoder('A',A(A_index),'BG',BG,'G',G,'Q_m',hMod.Q_m);
+            hDec = NRLDPCDecoder('A',A(A_index),'BG',BG,'G',G,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
             
             % Loop over the SNRs
             while BLER > target_BLER
@@ -123,29 +119,29 @@ for R_index = 1:length(R)
                     
                     
                     
-                    b = round(rand(hEnc.K_prime_minus_L,1));
+                    a = round(rand(hEnc.A,1));
                     
-                    b_hat = [];
+                    a_hat = [];
                     rv_id_index = 1;
                     reset(hDec); % Reset the incremental redundancy buffer
                     
-                    while isempty(b_hat) && rv_id_index <= length(rv_id_sequence)
+                    while isempty(a_hat) && rv_id_index <= length(rv_id_sequence)
                         
                         hEnc.rv_id = rv_id_sequence(rv_id_index);
                         hDec.rv_id = rv_id_sequence(rv_id_index);
                         
-                        f = step(hEnc,b);
-                        tx = step(hMod, f);
+                        g = step(hEnc,a);
+                        tx = step(hMod, g);
                         rx = step(hChan, tx);
-                        f_tilde = step(hDemod, rx);
-                        b_hat = step(hDec, f_tilde);
+                        g_tilde = step(hDemod, rx);
+                        a_hat = step(hDec, g_tilde);
                         
                         rv_id_index = rv_id_index + 1;
                     end
                     
                     
                     
-                    if found_start == false && ~isequal(b,b_hat)
+                    if found_start == false && ~isequal(a,a_hat)
                         keep_going = false;
                         
                         block_error_count = 1;
@@ -154,7 +150,7 @@ for R_index = 1:length(R)
                         found_start = true;
                         
                         % Determine if we have a block error
-                        if ~isequal(b, b_hat)
+                        if ~isequal(a, a_hat)
                             block_error_count = block_error_count+1;
                         end
                         
@@ -177,7 +173,7 @@ for R_index = 1:length(R)
             end
         end
         % Use interpolation to determine the SNR where the BLER equals the target
-        EsN0s(K_prime_index) = interp1(log10([prev_BLER, BLER]),[prev_EsN0,EsN0],log10(target_BLER));
+        EsN0s(A_index) = interp1(log10([prev_BLER, BLER]),[prev_EsN0,EsN0],log10(target_BLER));
         
         % Plot the SNR vs A results
         set(plots(R_index),'YData',EsN0s);
@@ -188,7 +184,7 @@ for R_index = 1:length(R)
         
         drawnow;
         
-        fprintf(fid,'%d\t%f\n',K_prime(K_prime_index),EsN0s(K_prime_index));
+        fprintf(fid,'%d\t%f\n',A(A_index),EsN0s(A_index));
         
         
     end

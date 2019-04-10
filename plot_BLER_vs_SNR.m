@@ -1,4 +1,4 @@
-function plot_BLER_vs_SNR(K_prime, R, CRC, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
+function plot_BLER_vs_SNR(A, R, BG, Modulation, rv_id_sequence, iterations, target_block_errors, target_BLER, EsN0_start, EsN0_delta, seed)
 % PLOT_BLER_VS_SNR Plots Block Error Rate (BLER) versus Signal to Noise
 % Ratio (SNR) for 3GPP New Radio LDPC code.
 %   target_block_errors should be an integer scalar. The simulation of each
@@ -28,17 +28,16 @@ function plot_BLER_vs_SNR(K_prime, R, CRC, BG, Modulation, rv_id_sequence, itera
 
 % Default values
 if nargin == 0
-    K_prime = 500;
+    A = 3842;
     R = 1/3;
-    CRC = 'CRC24B';
     BG = 2;
     Modulation = 'QPSK';
     rv_id_sequence = [0];
-    iterations = 10;
-    target_block_errors = 10;
+    iterations = 8;
+    target_block_errors = 3;
     target_BLER = 1e-3;
-    EsN0_start = -2;
-    EsN0_delta = 0.1;
+    EsN0_start = 0;
+    EsN0_delta = 0.5;
     seed = 0;
 end
 
@@ -57,7 +56,7 @@ for BG_index = 1:length(BG)
         % Create a figure to plot the results.
         figure
         axes1 = axes('YScale','log');
-        title(['3GPP New Radio LDPC code, R = ',num2str(R(R_index)),', ',CRC,', BG',num2str(BG(BG_index)),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
+        title(['3GPP New Radio LDPC code, R = ',num2str(R(R_index)),', BG',num2str(BG(BG_index)),', ',Modulation,', AWGN, iterations = ',num2str(iterations),', errors = ',num2str(target_block_errors)]);
         ylabel('BLER');
         xlabel('E_s/N_0 [dB]');
         ylim([target_BLER,1]);
@@ -65,11 +64,11 @@ for BG_index = 1:length(BG)
         drawnow
         
         % Consider each information block length in turn
-        for K_prime_index = 1:length(K_prime)
+        for A_index = 1:length(A)
             
             % Create the plot
             plot1 = plot(nan,'Parent',axes1);
-            legend(cellstr(num2str(K_prime(1:K_prime_index)', 'K''=%d')),'Location','southwest');
+            legend(cellstr(num2str(A(1:A_index)', 'A=%d')),'Location','southwest');
             
             % Counters to store the number of bits and errors simulated so far
             block_counts=[];
@@ -77,7 +76,7 @@ for BG_index = 1:length(BG)
             EsN0s = [];
             
             % Open a file to save the results into.
-            filename = ['results/BLER_vs_SNR_',num2str(K_prime(K_prime_index)),'_',num2str(R(R_index)),'_',CRC,'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
+            filename = ['results/BLER_vs_SNR_',num2str(A(A_index)),'_',num2str(R(R_index)),'_',num2str(BG(BG_index)),'_',Modulation,'_',num2str(iterations),'_',num2str(target_block_errors),'_',num2str(EsN0_start),'_',num2str(seed)];
             fid = fopen([filename,'.txt'],'w');
             if fid == -1
                 error('Could not open %s.txt',filename);
@@ -92,15 +91,13 @@ for BG_index = 1:length(BG)
             % Skip any encoded block lengths that generate errors
             try
                 
-                E = round((K_prime(K_prime_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
+                G = round((A(A_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
 
                 
                 
-                hEnc = NRLDPCEncoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m);
-                hDec = NRLDPCDecoder('BG',BG(BG_index),'CRC',CRC,'E',E,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
-                
-                hEnc.K_prime_minus_L = K_prime(K_prime_index) - hEnc.L
-                hDec.K_prime_minus_L = K_prime(K_prime_index) - hDec.L;
+                hEnc = NRLDPCEncoder('A', A(A_index),'BG',BG(BG_index),'G',G,'Q_m',hMod.Q_m)
+                hDec = NRLDPCDecoder('A', A(A_index),'BG',BG(BG_index),'G',G,'Q_m',hMod.Q_m,'I_HARQ',1,'iterations',iterations);
+                                
                 
                 
                 % Loop over the SNRs
@@ -118,34 +115,35 @@ for BG_index = 1:length(BG)
                     % Continue the simulation until enough block errors have been simulated
                     while keep_going && block_error_counts(end) < target_block_errors
                         
-                        b = round(rand(hEnc.K_prime_minus_L,1));
+                        a = round(rand(hEnc.A,1));
                         
-                        b_hat = [];
+                        a_hat = [];
                         rv_id_index = 1;
                         reset(hDec); % Reset the incremental redundancy buffer
                         
-                        while isempty(b_hat) && rv_id_index <= length(rv_id_sequence)
+                        while isempty(a_hat) && rv_id_index <= length(rv_id_sequence)
                             
                             hEnc.rv_id = rv_id_sequence(rv_id_index);
                             hDec.rv_id = rv_id_sequence(rv_id_index);
                             
-                            f = step(hEnc,b);
-                            tx = step(hMod, f);
+                            g = step(hEnc,a);
+                            tx = step(hMod, g);
                             rx = step(hChan, tx);
-                            f_tilde = step(hDemod, rx);
-                            b_hat = step(hDec, f_tilde);
+                            g_tilde = step(hDemod, rx);
+                            a_hat = step(hDec, g_tilde);
                             
                             rv_id_index = rv_id_index + 1;
+                            
                         end
                         
-                        if found_start == false && ~isequal(b,b_hat)
+                        if found_start == false && ~isequal(a,a_hat)
                             keep_going = false;
                             BLER = 1;
                         else
                             found_start = true;
                             
                             % Determine if we have a block error
-                            if ~isequal(b,b_hat)
+                            if ~isequal(a,a_hat)
                                 block_error_counts(end) = block_error_counts(end) + 1;
                             end
                             
