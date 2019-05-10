@@ -42,7 +42,12 @@ classdef NRLDPC < matlab.System
         %TBS_LBRM Transport block size for limited buffer rate matching
         %   Specifies the transport block size for limited buffer rate
         %   matching, as defined in Section 5.4.2.1 of TS38.212.
-        TBS_LBRM = inf;
+        TBS_LBRM = inf; % Default value
+        
+        %MAXCODEBLOCKGROUPSPERTRANSPORTBLOCK Maximum number of code block groups per transport block 
+        %   Specifies the maximum number of code block groups per transport
+        %   block, as defined in Section 5.1.7.1 of TS38.214.
+        maxCodeBlockGroupsPerTransportBlock = 1; % Default value 
         
     end
 
@@ -257,6 +262,17 @@ classdef NRLDPC < matlab.System
             end
             obj.TBS_LBRM = TBS_LBRM;
         end
+        
+        % Valid values of maxCodeBlockGroupsPerTransportBlock are described
+        % in TS38.331. Here, maxCodeBlockGroupsPerTransportBlock=1
+        % corresponds to codeBlockGroupTransmission=off.
+        function set.maxCodeBlockGroupsPerTransportBlock(obj, maxCodeBlockGroupsPerTransportBlock)
+            if maxCodeBlockGroupsPerTransportBlock ~= 1 && maxCodeBlockGroupsPerTransportBlock ~= 2 && maxCodeBlockGroupsPerTransportBlock ~= 4 && maxCodeBlockGroupsPerTransportBlock ~= 6 && maxCodeBlockGroupsPerTransportBlock ~= 8
+                error('ldpc_3gpp_matlab:UnsupportedParameters','maxCodeBlockGroupsPerTransportBlock should be 1, 2, 4, 6 or 8.');
+            end
+            obj.maxCodeBlockGroupsPerTransportBlock = maxCodeBlockGroupsPerTransportBlock;
+        end
+        
         
         % Valid values of rv_id are described in Section 5.4.2.1 of 
         % TS38.212.
