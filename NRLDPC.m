@@ -43,12 +43,7 @@ classdef NRLDPC < matlab.System
         %   Specifies the transport block size for limited buffer rate
         %   matching, as defined in Section 5.4.2.1 of TS38.212.
         TBS_LBRM = inf; % Default value
-        
-        %MAXCODEBLOCKGROUPSPERTRANSPORTBLOCK Maximum number of code block groups per transport block 
-        %   Specifies the maximum number of code block groups per transport
-        %   block, as defined in Section 5.1.7.1 of TS38.214.
-        maxCodeBlockGroupsPerTransportBlock = 1; % Default value 
-        
+                
     end
 
     % Tunable properties can be changed anytime, even after the step 
@@ -82,11 +77,16 @@ classdef NRLDPC < matlab.System
         N_L = 1; % Default value
         
         %CBGTI Code block group transmission information
-        %   A vector that specifies the indices of code blocks that should be excluded from
-        %   retransmission during HARQ, where the first code block has an
-        %   index of 0. CBGTI is tunable so that it can be changed
-        %   for successive retransmissions during HARQ.
-        CBGTI = []; % Default value
+        %   A binary vector of length 1, 2, 4, 6 or 8,
+        %   where elements having the value 0 indicate that the
+        %   corresponding codeblock groups should be excluded from
+        %   retransmission during HARQ and elements having the value 1
+        %   indicate that the corresponding codeblock groups should be
+        %   included in retransmission during HARQ. Valid lengths of CBGTI
+        %   are referred to as maxCodeBlockGroupsPerTransportBlock
+        %   in TS38.331, where a length of 1 corresponds to
+        %   codeBlockGroupTransmission=off.
+        CBGTI = 1; % Default value
     end
         
     % Protected dependent properties cannot be set manually. Instead, they
@@ -261,18 +261,7 @@ classdef NRLDPC < matlab.System
                 error('ldpc_3gpp_matlab:UnsupportedParameters','TBS_LBRM should not be negative.');
             end
             obj.TBS_LBRM = TBS_LBRM;
-        end
-        
-        % Valid values of maxCodeBlockGroupsPerTransportBlock are described
-        % in TS38.331. Here, maxCodeBlockGroupsPerTransportBlock=1
-        % corresponds to codeBlockGroupTransmission=off.
-        function set.maxCodeBlockGroupsPerTransportBlock(obj, maxCodeBlockGroupsPerTransportBlock)
-            if maxCodeBlockGroupsPerTransportBlock ~= 1 && maxCodeBlockGroupsPerTransportBlock ~= 2 && maxCodeBlockGroupsPerTransportBlock ~= 4 && maxCodeBlockGroupsPerTransportBlock ~= 6 && maxCodeBlockGroupsPerTransportBlock ~= 8
-                error('ldpc_3gpp_matlab:UnsupportedParameters','maxCodeBlockGroupsPerTransportBlock should be 1, 2, 4, 6 or 8.');
-            end
-            obj.maxCodeBlockGroupsPerTransportBlock = maxCodeBlockGroupsPerTransportBlock;
-        end
-        
+        end        
         
         % Valid values of rv_id are described in Section 5.4.2.1 of 
         % TS38.212.
@@ -309,6 +298,13 @@ classdef NRLDPC < matlab.System
             obj.N_L = N_L;
         end
 
+        function set.CBGTI(obj, CBGTI)
+            if min(CBGTI) < 0 || max(CBGTI) > 1 || ~(length(CBGTI) == 1 || length(CBGTI) == 2 || length(CBGTI) == 4 || length(CBGTI) == 6 || length(CBGTI) == 8)
+                error('ldpc_3gpp_matlab:UnsupportedParameters','CBGTI should be a binary vector of length 1, 2, 4, 6 or 8');
+            end
+            obj.CBGTI = CBGTI;
+        end
+        
         % Transport block CRC is decided in Sections 6.2.1 and 7.2.1 of TS38.212.
         function transport_block_CRC = get.transport_block_CRC(obj)
             if obj.A > 3824
@@ -465,10 +461,25 @@ classdef NRLDPC < matlab.System
         end
         
         function CBGTI_flags = get.CBGTI_flags(obj)
-            CBGTI_flags = ones(1,obj.C);
-            CBGTI_flags(obj.CBGTI(obj.CBGTI<obj.C)+1) = 0;            
+            M = min(length(obj.CBGTI), obj.C);
+            M_1 = mod(obj.C,M);
+            K_1 = ceil(obj.C/M);
+            K_2 = floor(obj.C/M);
+            
+            CBGTI_flags = zeros(1,obj.C);
+            for m = 0:M_1-1
+                for k = 0:K_1-1
+                    CBGTI_flags(m*K_1+k+1) = obj.CBGTI(m+1);
+                end
+            end
+                
+            for m = M_1:M-1
+                for k = 0:K_2-1
+                    CBGTI_flags(M_1*K_1+(m-M_1)*K_2+k+1) = obj.CBGTI(m+1);
+                end
+            end
         end
-        
+
         % The calculation of C_prime is given in Section 5.4.2.1 of TS38.212.
         function C_prime = get.C_prime(obj)
             C_prime = sum(obj.CBGTI_flags);

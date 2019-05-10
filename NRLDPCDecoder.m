@@ -34,13 +34,23 @@ classdef NRLDPCDecoder < NRLDPC
         I_HARQ = 0; % Default value
     end
     
+    % Tunable properties can be changed anytime, even after the step 
+    % function has been called.
     properties
         %ITERATIONS Number of decoding iterations
         %   Specifies the number of flooding decoding iterations performed during
         %   LDPC decoding.
         iterations = 50; % Default value
+        
+        %CBGFI Code block group flushing out information
+        %   A value of 0 indicates that the earlier received instances of
+        %   the same code block groups being transmitted may be corrupted,
+        %   while a value of 1 indicates that these code block groups
+        %   are combinable with the earlier received instances of the same
+        %   code block groups.
+        CBGFI = 1; % Default value        
     end
-    
+        
     properties(Access = private, Hidden)
         %HTBCRCDETECTOR Cyclic Redundancy Check (CRC) detector
         %   A COMM.CRCDETECTOR used to check the transport block CRC.
@@ -94,12 +104,20 @@ classdef NRLDPCDecoder < NRLDPC
         
     end
     
-    methods
+    methods        
         % Constructor allowing properties to be set according to e.g.
         % a = NRLDPCDecoder('BG',1,'A',20,'G',132);
         function obj = NRLDPCDecoder(varargin)
             setProperties(obj,nargin,varargin{:});
         end
+        
+        function set.CBGFI(obj, CBGFI)
+            if CBGFI < 0 || CBGFI > 1 
+                error('ldpc_3gpp_matlab:UnsupportedParameters','CBGFI should be 0 or 1');
+            end
+            obj.CBGFI = CBGFI;
+        end
+        
     end
     
     methods(Access = protected)
@@ -209,7 +227,9 @@ classdef NRLDPCDecoder < NRLDPC
                 end
                 
                 if obj.I_HARQ ~= 0
-                    d_tilde{r+1}(1:obj.N_cb) = d_tilde{r+1}(1:obj.N_cb) + obj.d_tilde_buffer{r+1};
+                    if obj.CBGFI == 1
+                        d_tilde{r+1}(1:obj.N_cb) = d_tilde{r+1}(1:obj.N_cb) + obj.d_tilde_buffer{r+1};
+                    end
                     obj.d_tilde_buffer{r+1} = d_tilde{r+1}(1:obj.N_cb);
                 end
             end
