@@ -227,7 +227,7 @@ classdef NRLDPCDecoder < NRLDPC
                 end
                 
                 if obj.I_HARQ ~= 0
-                    if obj.CBGFI == 1
+                    if obj.CBGFI ~= 0 || obj.CBGTI_flags(r+1) == 0
                         d_tilde{r+1}(1:obj.N_cb) = d_tilde{r+1}(1:obj.N_cb) + obj.d_tilde_buffer{r+1};
                     end
                     obj.d_tilde_buffer{r+1} = d_tilde{r+1}(1:obj.N_cb);
@@ -280,7 +280,7 @@ classdef NRLDPCDecoder < NRLDPC
                 end
                 
                 for k = 0:obj.K_prime-obj.code_block_L-1
-                    if ~code_block_CRC_failed && obj.CBGTI_flags(r+1) == 1
+                    if ~code_block_CRC_failed && obj.CBGTI_flags(r+1) ~= 0
                         b_hat(s+1) = c_hat{r+1}(k+1);
                         obj.code_block_CRC_passed(r+1) = 1;
                     end
