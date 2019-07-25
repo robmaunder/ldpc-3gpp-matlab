@@ -155,6 +155,10 @@ classdef NRLDPCEncoder < NRLDPC
             if size(d,1) ~= obj.C || size(d,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','d should be a column cell array of length C.');
             end
+
+            if obj.K_prime <= 2*obj.Z_c
+                error('ldpc_3gpp_matlab:UnsupportedParameters','K_prime must be greater than 2*Z_c.');
+            end    
             
             e=cell(obj.C,1);
             
@@ -162,6 +166,7 @@ classdef NRLDPCEncoder < NRLDPC
                 if size(d{r+1},1) ~= obj.N || size(d{r+1},2) ~= 1
                     error('ldpc_3gpp_matlab:Error','d{r+1} should be a column vector of length N.');
                 end
+                
                 e{r+1} = zeros(obj.E_r(r+1),1);
 
                 k = 0;
