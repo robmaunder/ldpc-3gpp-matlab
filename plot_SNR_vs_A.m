@@ -93,8 +93,7 @@ for R_index = 1:length(R)
             % Initialise the BLER and SNR
             BLER=1;
             prev_BLER = nan;
-            EsN0 = EsN0_start;
-            prev_EsN0 = nan;
+            EsN0 = EsN0_start-EsN0_delta;
             G = round((A(A_index))/R(R_index)/hMod.Q_m)*hMod.Q_m;
             
             
@@ -103,6 +102,8 @@ for R_index = 1:length(R)
             
             % Loop over the SNRs
             while BLER > target_BLER
+                prev_EsN0 = EsN0;
+                EsN0 = EsN0 + EsN0_delta;
                 
                 hChan.SNR = EsN0;
                 hDemod.Variance = 1/10^(EsN0/10);
@@ -161,8 +162,6 @@ for R_index = 1:length(R)
                 end
                 prev_BLER = BLER;
                 BLER = block_error_count/block_count;
-                prev_EsN0 = EsN0;
-                EsN0 = EsN0 + EsN0_delta;
             end
         catch ME
             if strcmp(ME.identifier, 'ldpc_3gpp_matlab:UnsupportedParameters')
