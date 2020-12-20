@@ -3,3 +3,6 @@ Matlab simulations of the encoder and decoder for the New Radio LDPC code from 3
 https://portal.3gpp.org/desktopmodules/Specifications/SpecificationDetails.aspx?specificationId=3214
 
 The best way to get started with this code is to run plot_BLER_vs_SNR.m
+
+Note that a license to the Matlab Communications Toolbox is required to run this code...
+https://www.mathworks.com/products/communications.html
