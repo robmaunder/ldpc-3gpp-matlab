@@ -68,47 +68,56 @@ classdef NRLDPCEncoder < NRLDPC
         
         % Implements Section 5.3.2 of TS38.212
         function b = crc_calculation(obj, a)
-            if size(a,1) ~= obj.A || size(a,2) ~= 1
+            A_ = obj.A;
+            B_ = obj.B;
+            
+            if size(a,1) ~= A_ || size(a,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','a should be a column vector of length A.');
             end
             
-            b = zeros(obj.B,1);
+            b = zeros(B_,1);
             
             ap = step(obj.hTBCRCGenerator, a);
-            p = ap(obj.A+1:obj.B);
+            p = ap(A_+1:B_);
                 
-            for k = 0:obj.A-1
+            for k = 0:A_-1
                 b(k+1) = a(k+1);
             end
-            for k = obj.A:obj.B-1
-                b(k+1) = p(k-obj.A+1);
+            for k = A_:B_-1
+                b(k+1) = p(k-A_+1);
             end
         end
                 
         % Implements Section 5.2.2 of TS38.212
         function c = code_block_segmentation(obj, b)
-            if size(b,1) ~= obj.B || size(b,2) ~= 1
+            B_ = obj.B;
+            C_ = obj.C;
+            K_ = obj.K;
+            K_prime_ = obj.K_prime;
+            code_block_L_ = obj.code_block_L;
+            
+            if size(b,1) ~= B_ || size(b,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','b should be a column vector of length B.');
             end
             
-            c = cell(obj.C,1);
+            c = cell(C_,1);
             
             s = 0;           
-            for r = 0:obj.C-1
-                c{r+1} = zeros(obj.K,1);
+            for r = 0:C_-1
+                c{r+1} = zeros(K_,1);
                 
-                for k = 0:obj.K_prime-obj.code_block_L-1
+                for k = 0:K_prime_-code_block_L_-1
                     c{r+1}(k+1) = b(s+1);
                     s = s + 1;
                 end
-                if obj.C > 1
-                    cp = step(obj.hCBCRCGenerator, c{r+1}(1:obj.K_prime-obj.code_block_L));
-                    p = cp(obj.K_prime-obj.code_block_L+1:obj.K_prime);
-                    for k = obj.K_prime-obj.code_block_L:obj.K_prime-1
-                        c{r+1}(k+1) = p(k+obj.code_block_L-obj.K_prime+1);
+                if C_ > 1
+                    cp = step(obj.hCBCRCGenerator, c{r+1}(1:K_prime_-code_block_L_));
+                    p = cp(K_prime_-code_block_L_+1:K_prime_);
+                    for k = K_prime_-code_block_L_:K_prime_-1
+                        c{r+1}(k+1) = p(k+code_block_L_-K_prime_+1);
                     end
                 end
-                for k = obj.K_prime:obj.K-1
+                for k = K_prime_:K_-1
                     c{r+1}(k+1) = NaN;
                 end
             end
@@ -116,59 +125,70 @@ classdef NRLDPCEncoder < NRLDPC
         
         % Implements Section 5.3.2 of TS38.212
         function d = LDPC_coding(obj, c)
-            if size(c,1) ~= obj.C || size(c,2) ~= 1
+            C_ = obj.C;
+            K_ = obj.K;
+            N_ = obj.N;
+            Z_c_ = obj.Z_c;
+            
+            if size(c,1) ~= C_ || size(c,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','c should be a column cell array of length C.');
             end
             
-            d = cell(obj.C,1);
+            d = cell(C_,1);
             
-            for r = 0:obj.C-1
-                if size(c{r+1},1) ~= obj.K || size(c{r+1},2) ~= 1
+            for r = 0:C_-1
+                if size(c{r+1},1) ~= K_ || size(c{r+1},2) ~= 1
                     error('ldpc_3gpp_matlab:Error','c{r+1} should be a column vector of length K.');
                 end
                 
-                d{r+1} = zeros(obj.N,1);
+                d{r+1} = zeros(N_,1);
                 
                 % Not sure about what to do if there are NaNs within the first
-                % 2*obj.Z_c elements of c. The following code (adapted from
+                % 2*Z_c elements of c. The following code (adapted from
                 % TS38.212) does not set these to 0.
-                for k = 2*obj.Z_c:obj.K-1
+                for k = 2*Z_c_:K_-1
                     if ~isnan(c{r+1}(k+1))
-                        d{r+1}(k-2*obj.Z_c+1) = c{r+1}(k+1);
+                        d{r+1}(k-2*Z_c_+1) = c{r+1}(k+1);
                     else
                         c{r+1}(k+1) = 0;
-                        d{r+1}(k-2*obj.Z_c+1) = NaN;
+                        d{r+1}(k-2*Z_c_+1) = NaN;
                     end
                 end
 
                 cw = step(obj.hLDPCEncoder, c{r+1});
-                w = cw(obj.K+1:obj.N+2*obj.Z_c);
+                w = cw(K_+1:N_+2*Z_c_);
 
-                for k = obj.K:obj.N+2*obj.Z_c-1
-                    d{r+1}(k-2*obj.Z_c+1) = w(k-obj.K+1);
+                for k = K_:N_+2*Z_c_-1
+                    d{r+1}(k-2*Z_c_+1) = w(k-K_+1);
                 end
             end
         end
         
         % Implements Section 5.4.2.1 of TS38.212
         function e = bit_selection(obj, d)
-            if size(d,1) ~= obj.C || size(d,2) ~= 1
+            C_ = obj.C;
+            N_ = obj.N;
+            E_r_ = obj.E_r;
+            k_0_ = obj.k_0;
+            N_cb_ = obj.N_cb;
+            
+            if size(d,1) ~= C_ || size(d,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','d should be a column cell array of length C.');
             end
             
-            e=cell(obj.C,1);
+            e=cell(C_,1);
             
-            for r = 0:obj.C-1
-                if size(d{r+1},1) ~= obj.N || size(d{r+1},2) ~= 1
+            for r = 0:C_-1
+                if size(d{r+1},1) ~= N_ || size(d{r+1},2) ~= 1
                     error('ldpc_3gpp_matlab:Error','d{r+1} should be a column vector of length N.');
                 end
-                e{r+1} = zeros(obj.E_r(r+1),1);
+                e{r+1} = zeros(E_r_(r+1),1);
 
                 k = 0;
                 j = 0;
-                while k < obj.E_r(r+1)
-                    if ~isnan(d{r+1}(mod(obj.k_0 + j, obj.N_cb)+1))
-                        e{r+1}(k+1) = d{r+1}(mod(obj.k_0 + j, obj.N_cb)+1);
+                while k < E_r_(r+1)
+                    if ~isnan(d{r+1}(mod(k_0_ + j, N_cb_)+1))
+                        e{r+1}(k+1) = d{r+1}(mod(k_0_ + j, N_cb_)+1);
                         k = k+1;
                     end
                     j = j+1;
@@ -178,23 +198,27 @@ classdef NRLDPCEncoder < NRLDPC
         
         % Implements Section 5.4.2.2 of TS38.212
         function f = bit_interleaving(obj, e)
-            if size(e,1) ~= obj.C || size(e,2) ~= 1
+            C_ = obj.C;
+            E_r_ = obj.E_r;
+            Q_m_ = obj.Q_m;
+                        
+            if size(e,1) ~= C_ || size(e,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','e should be a column cell array of length C.');
             end
             
-            f = cell(obj.C,1);
+            f = cell(C_,1);
             
-            for r = 0:obj.C-1
+            for r = 0:C_-1
                 
-                if size(e{r+1},1) ~= obj.E_r(r+1) || size(e{r+1},2) ~= 1
+                if size(e{r+1},1) ~= E_r_(r+1) || size(e{r+1},2) ~= 1
                     error('ldpc_3gpp_matlab:Error','e{r+1} should be a column vector of length E_r(r+1).');
                 end
             
-                f{r+1} = zeros(obj.E_r(r+1),1);
+                f{r+1} = zeros(E_r_(r+1),1);
 
-                for j = 0:obj.E_r(r+1)/obj.Q_m-1
-                    for i = 0:obj.Q_m-1
-                        f{r+1}(i+j*obj.Q_m+1) = e{r+1}(i*obj.E_r(r+1)/obj.Q_m+j+1);
+                for j = 0:E_r_(r+1)/Q_m_-1
+                    for i = 0:Q_m_-1
+                        f{r+1}(i+j*Q_m_+1) = e{r+1}(i*E_r_(r+1)/Q_m_+j+1);
                     end
                 end
             end
@@ -202,23 +226,27 @@ classdef NRLDPCEncoder < NRLDPC
 
         % Implements Section 5.5 of TS38.212
         function g = code_block_concatenation(obj, f)
-            if size(f,1) ~= obj.C || size(f,2) ~= 1
+            C_ = obj.C;
+            E_r_ = obj.E_r;
+            G_ = obj.G;
+            
+            if size(f,1) ~= C_ || size(f,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','f should be a column cell array of length C.');
             end
-            for r = 0:obj.C-1                
-                if size(f{r+1},1) ~= obj.E_r(r+1) || size(f{r+1},2) ~= 1
+            for r = 0:C_-1                
+                if size(f{r+1},1) ~= E_r_(r+1) || size(f{r+1},2) ~= 1
                     error('ldpc_3gpp_matlab:Error','f{r+1} should be a column vector of length E_r(r+1).');
                 end
             end
             
-            g = zeros(obj.G,1);
+            g = zeros(G_,1);
             
             k = 0;
             r = 0;
             
-            while r < obj.C
+            while r < C_
                 j = 0;
-                while j < obj.E_r(r+1)
+                while j < E_r_(r+1)
                     g(k+1) = f{r+1}(j+1);
                     k = k + 1;
                     j = j + 1;

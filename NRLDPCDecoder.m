@@ -105,22 +105,28 @@ classdef NRLDPCDecoder < NRLDPC
     methods(Access = protected)
         
         function setupImpl(obj)
+            B_ = obj.B;
+            C_ = obj.C;
+            N_cb_ = obj.N_cb;
+            code_block_L_ = obj.code_block_L;
+            
             obj.hTBCRCDetector = comm.CRCDetector('Polynomial',obj.transport_block_CRC_polynomial);
-            if obj.code_block_L > 0
+            if code_block_L_ > 0
                 obj.hCBCRCDetector = comm.CRCDetector('Polynomial',obj.code_block_CRC_polynomial);
             end
-            %             try
-            %                 obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
-            %             catch
-            obj.hLDPCDecoder = comm.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
-            %             end
-            obj.d_tilde_buffer = cell(obj.C,1);
-            for r=0:obj.C-1
-                obj.d_tilde_buffer{r+1} = zeros(obj.N_cb,1);
+%             try
+%                 obj.hLDPCDecoder = comm.gpu.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+%             catch
+                obj.hLDPCDecoder = comm.LDPCDecoder('ParityCheckMatrix',obj.H,'MaximumIterationCount',obj.iterations,'IterationTerminationCondition','Parity check satisfied');
+%             end
+            d_tilde_buffer_ = cell(C_,1);
+            for r=0:C_-1
+                d_tilde_buffer_{r+1} = zeros(N_cb_,1);
             end
+            obj.d_tilde_buffer = d_tilde_buffer_;
             
-            obj.b_hat_buffer = zeros(obj.B,1);
-            obj.code_block_CRC_passed = zeros(obj.C,1);
+            obj.b_hat_buffer = zeros(B_,1);
+            obj.code_block_CRC_passed = zeros(C_,1);
         end
         
         
@@ -135,21 +141,25 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.5 of TS38.212
         function f_tilde = code_block_concatenation(obj, g_tilde)
-            if size(g_tilde,1) ~= obj.G || size(g_tilde,2) ~= 1
+            G_ = obj.G;
+            C_ = obj.C;
+            E_r_ = obj.E_r;
+            
+            if size(g_tilde,1) ~= G_ || size(g_tilde,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','g_tilde should be a column vector of length G.');
             end
             
-            f_tilde = cell(obj.C,1);
-            for r = 0:obj.C-1
-                f_tilde{r+1} = zeros(obj.E_r(r+1), 1);
+            f_tilde = cell(C_,1);
+            for r = 0:C_-1
+                f_tilde{r+1} = zeros(E_r_(r+1), 1);
             end
             
             k = 0;
             r = 0;
             
-            while r < obj.C
+            while r < C_
                 j = 0;
-                while j < obj.E_r(r+1)
+                while j < E_r_(r+1)
                     f_tilde{r+1}(j+1) = g_tilde(k+1);
                     k = k + 1;
                     j = j + 1;
@@ -160,23 +170,27 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.4.2.2 of TS38.212
         function e_tilde = bit_interleaving(obj, f_tilde)
-            if size(f_tilde,1) ~= obj.C || size(f_tilde,2) ~= 1
+            C_ = obj.C;
+            E_r_ = obj.E_r;
+            Q_m_ = obj.Q_m;
+            
+            if size(f_tilde,1) ~= C_ || size(f_tilde,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','f_tilde should be a column cell array of length C.');
             end
             
-            e_tilde = cell(obj.C,1);
+            e_tilde = cell(C_,1);
             
-            for r = 0:obj.C-1
+            for r = 0:C_-1
                 
-                if size(f_tilde{r+1},1) ~= obj.E_r(r+1) || size(f_tilde{r+1},2) ~= 1
+                if size(f_tilde{r+1},1) ~= E_r_(r+1) || size(f_tilde{r+1},2) ~= 1
                     error('ldpc_3gpp_matlab:Error','f_tilde{r+1} should be a column vector of length E_r(r+1).');
                 end
                 
-                e_tilde{r+1} = zeros(obj.E_r(r+1),1);
+                e_tilde{r+1} = zeros(E_r_(r+1),1);
                 
-                for j = 0:obj.E_r(r+1)/obj.Q_m-1
-                    for i = 0:obj.Q_m-1
-                        e_tilde{r+1}(i*obj.E_r(r+1)/obj.Q_m+j+1) = f_tilde{r+1}(i+j*obj.Q_m+1);
+                for j = 0:E_r_(r+1)/Q_m_-1
+                    for i = 0:Q_m_-1
+                        e_tilde{r+1}(i*E_r_(r+1)/Q_m_+j+1) = f_tilde{r+1}(i+j*Q_m_+1);
                     end
                 end
             end
@@ -184,52 +198,69 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.4.2.1 of TS38.212
         function d_tilde = bit_selection(obj, e_tilde)
-            if size(e_tilde,1) ~= obj.C || size(e_tilde,2) ~= 1
+            C_ = obj.C;
+            E_r_ = obj.E_r;
+            N_ = obj.N;
+            K_prime_ = obj.K_prime;
+            Z_c_ = obj.Z_c;
+            K_ = obj.K;
+            k_0_ = obj.k_0;
+            N_cb_ = obj.N_cb;
+            I_HARQ_ = obj.I_HARQ;
+            d_tilde_buffer_ = obj.d_tilde_buffer;
+            
+            if size(e_tilde,1) ~= C_ || size(e_tilde,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','e_tilde should be a column cell array of length C.');
             end
             
-            d_tilde = cell(obj.C,1);
+            d_tilde = cell(C_,1);
             
-            for r=0:obj.C-1
-                if size(e_tilde{r+1},1) ~= obj.E_r(r+1) || size(e_tilde{r+1},2) ~= 1
+            for r=0:C_-1
+                if size(e_tilde{r+1},1) ~= E_r_(r+1) || size(e_tilde{r+1},2) ~= 1
                     error('ldpc_3gpp_matlab:Error','e_tilde{r+1} should be a column vector of length E_r(r+1).');
                 end
                 
-                d_tilde{r+1} = zeros(obj.N,1);
-                d_tilde{r+1}(max(obj.K_prime-2*obj.Z_c+1,1):obj.K-2*obj.Z_c) = NaN;
+                d_tilde{r+1} = zeros(N_,1);
+                d_tilde{r+1}(max(K_prime_-2*Z_c_+1,1):K_-2*Z_c_) = NaN;
                 
                 k = 0;
                 j = 0;
-                while k < obj.E_r(r+1)
-                    if ~isnan(d_tilde{r+1}(mod(obj.k_0 + j, obj.N_cb)+1))
-                        d_tilde{r+1}(mod(obj.k_0 + j, obj.N_cb)+1) = d_tilde{r+1}(mod(obj.k_0 + j, obj.N_cb)+1) + e_tilde{r+1}(k+1);
+                while k < E_r_(r+1)
+                    if ~isnan(d_tilde{r+1}(mod(k_0_ + j, N_cb_)+1))
+                        d_tilde{r+1}(mod(k_0_ + j, N_cb_)+1) = d_tilde{r+1}(mod(k_0_ + j, N_cb_)+1) + e_tilde{r+1}(k+1);
                         k = k+1;
                     end
                     j = j+1;
                 end
                 
-                if obj.I_HARQ ~= 0
-                    d_tilde{r+1}(1:obj.N_cb) = d_tilde{r+1}(1:obj.N_cb) + obj.d_tilde_buffer{r+1};
-                    obj.d_tilde_buffer{r+1} = d_tilde{r+1}(1:obj.N_cb);
+                if I_HARQ_ ~= 0
+                    d_tilde{r+1}(1:N_cb_) = d_tilde{r+1}(1:N_cb_) + d_tilde_buffer_{r+1};
+                    d_tilde_buffer_{r+1} = d_tilde{r+1}(1:N_cb_);
                 end
             end
+            obj.d_tilde_buffer = d_tilde_buffer_;
         end
         
         % Implements Section 5.3.2 of TS38.212
         function c_hat = LDPC_coding(obj, d_tilde)
-            if size(d_tilde,1) ~= obj.C || size(d_tilde,2) ~= 1
+            C_ = obj.C;
+            N_ = obj.N;
+            Z_c_ = obj.Z_c;
+            K_ = obj.K;
+            
+            if size(d_tilde,1) ~= C_ || size(d_tilde,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','d_tilde should be a column cell array of length C.');
             end
             
-            c_hat = cell(obj.C,1);
+            c_hat = cell(C_,1);
             
-            for r=0:obj.C-1
-                if size(d_tilde{r+1},1) ~= obj.N || size(d_tilde{r+1},2) ~= 1
+            for r=0:C_-1
+                if size(d_tilde{r+1},1) ~= N_ || size(d_tilde{r+1},2) ~= 1
                     error('ldpc_3gpp_matlab:Error','d_tilde{r+1} should be a column vector of length N.');
                 end
                 
-                cw_tilde = [zeros(2*obj.Z_c,1); d_tilde{r+1}];
-                c_tilde = cw_tilde(1:obj.K);
+                cw_tilde = [zeros(2*Z_c_,1); d_tilde{r+1}];
+                c_tilde = cw_tilde(1:K_);
                 cw_tilde(isnan(cw_tilde)) = inf;
                 c_hat{r+1} = double(step(obj.hLDPCDecoder, cw_tilde));
                 c_hat{r+1}(isnan(c_tilde)) = NaN;
@@ -238,68 +269,90 @@ classdef NRLDPCDecoder < NRLDPC
         
         % Implements Section 5.2.2 of TS38.212
         function b_hat = code_block_segmentation(obj, c_hat)
-            if size(c_hat,1) ~= obj.C || size(c_hat,2) ~= 1
+            C_ = obj.C;
+            I_HARQ_ = obj.I_HARQ;
+            b_hat_buffer_ = obj.b_hat_buffer;
+            B_ = obj.B;
+            K_ = obj.K;
+            K_prime_ = obj.K_prime;
+            code_block_L_ = obj.code_block_L;
+            CBGTI_flags_ = obj.CBGTI_flags;
+            code_block_CRC_passed_ = obj.code_block_CRC_passed;
+            
+            if size(c_hat,1) ~= C_ || size(c_hat,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','c_hat should be a column cell array of length C.');
             end
             
-            if obj.I_HARQ ~= 0
-                b_hat = obj.b_hat_buffer;
+            if I_HARQ_ ~= 0
+                b_hat = b_hat_buffer_;
             else
-                b_hat = zeros(obj.B,1);
+                b_hat = zeros(B_,1);
             end
             
             s = 0;
-            for r = 0:obj.C-1
-                if size(c_hat{r+1},1) ~= obj.K || size(c_hat,2) ~= 1
+            for r = 0:C_-1
+                if size(c_hat{r+1},1) ~= K_ || size(c_hat,2) ~= 1
                     error('ldpc_3gpp_matlab:Error','c_hat should be a column vector of length K.');
                 end
                 
                 code_block_CRC_failed = false;
-                if obj.C > 1
-                    [~,code_block_CRC_failed] = step(obj.hCBCRCDetector,c_hat{r+1}(1:obj.K_prime));
+                if C_ > 1
+                    [~,code_block_CRC_failed] = step(obj.hCBCRCDetector,c_hat{r+1}(1:K_prime_));
                 end
                 
-                for k = 0:obj.K_prime-obj.code_block_L-1
-                    if ~code_block_CRC_failed && obj.CBGTI_flags(r+1) == 1
+                for k = 0:K_prime_-code_block_L_-1
+                    if ~code_block_CRC_failed && CBGTI_flags_(r+1) == 1
                         b_hat(s+1) = c_hat{r+1}(k+1);
-                        obj.code_block_CRC_passed(r+1) = 1;
+                        code_block_CRC_passed_(r+1) = 1;
                     end
                     s = s + 1;
                 end                
             end
             
-            if obj.I_HARQ ~= 0
-                obj.b_hat_buffer = b_hat;
+            if I_HARQ_ ~= 0
+                b_hat_buffer_ = b_hat;
             end
+            
+            obj.code_block_CRC_passed = code_block_CRC_passed_;
+            obj.b_hat_buffer = b_hat_buffer_;
         end
         
         % Implements Section 5.1 of TS38.212
         function a_hat = crc_calculation(obj, b_hat)
-            if size(b_hat,1) ~= obj.B || size(b_hat,2) ~= 1
+            B_ = obj.B;
+            A_ = obj.A;
+            code_block_CRC_passed_ = obj.code_block_CRC_passed;
+            
+            if size(b_hat,1) ~= B_ || size(b_hat,2) ~= 1
                 error('ldpc_3gpp_matlab:Error','b_hat should be a column vector of length B.');
             end
             
-            a_hat = zeros(obj.A,1);
+            a_hat = zeros(A_,1);
             
-            for k = 0:obj.A-1
+            for k = 0:A_-1
                 a_hat(k+1) = b_hat(k+1);
             end
             
             [~,transport_block_CRC_failed] = step(obj.hTBCRCDetector,b_hat);
-            if transport_block_CRC_failed || any(~obj.code_block_CRC_passed)
+            if transport_block_CRC_failed || any(~code_block_CRC_passed_)
                 a_hat = [];
             end
         end
         
         
         function resetImpl(obj)
-            obj.d_tilde_buffer = cell(obj.C,1);
-            for r=0:obj.C-1
-                obj.d_tilde_buffer{r+1} = zeros(obj.N_cb,1);
-            end
+            C_ = obj.C;
+            B_ = obj.B;
+            N_cb_ = obj.N_cb;
             
-            obj.b_hat_buffer = zeros(obj.B,1);
-            obj.code_block_CRC_passed = zeros(obj.C,1);            
+            d_tilde_buffer_ = cell(C_,1);
+            for r=0:C_-1
+                d_tilde_buffer_{r+1} = zeros(N_cb_,1);
+            end
+            obj.d_tilde_buffer = d_tilde_buffer_;
+            
+            obj.b_hat_buffer = zeros(B_,1);
+            obj.code_block_CRC_passed = zeros(C_,1);            
         end
         
     end

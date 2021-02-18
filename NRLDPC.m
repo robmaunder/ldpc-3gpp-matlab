@@ -319,9 +319,11 @@ classdef NRLDPC < matlab.System
         
         % K_cb is calculated in Section 5.2.2 of TS38.212
         function K_cb = get.K_cb(obj)
-            if obj.BG == 1
+            BG_ = obj.BG;
+            
+            if BG_ == 1
                 K_cb = 8448;
-            elseif obj.BG == 2
+            elseif BG_ == 2
                 K_cb = 3840;
             else
                 error('ldpc_3gpp_matlab:UnsupportedParameters','BG must be 1 or 2');
@@ -330,10 +332,14 @@ classdef NRLDPC < matlab.System
         
         % C is calculated in Section 5.2.2 of TS38.212
         function C = get.C(obj)
-            if obj.B <= obj.K_cb
+            B_ = obj.B;
+            K_cb_ = obj.K_cb;
+            code_block_L_ = obj.code_block_L;
+            
+            if B_ <= K_cb_
                 C = 1;
             else
-                C = ceil(obj.B/(obj.K_cb-obj.code_block_L));
+                C = ceil(B_/(K_cb_-code_block_L_));
             end            
         end
                 
@@ -358,10 +364,15 @@ classdef NRLDPC < matlab.System
         
         % B_prime is calculated in Section 5.2.2 of TS38.212
         function B_prime = get.B_prime(obj)
-            if obj.B <= obj.K_cb
-                B_prime = obj.B;
+            B_ = obj.B;
+            K_cb_ = obj.K_cb;
+            C_ = obj.C;
+            code_block_L_ = obj.code_block_L;
+            
+            if B_ <= K_cb_
+                B_prime = B_;
             else
-                B_prime = obj.B + obj.C*obj.code_block_L;
+                B_prime = B_ + C_*code_block_L_;
             end            
         end            
         
@@ -372,16 +383,19 @@ classdef NRLDPC < matlab.System
         
         % The calculation of K_b is given in Section 5.2.2 of TS38.212.
         function K_b = get.K_b(obj)
-            if obj.BG == 1
+            BG_ = obj.BG;
+            K_prime_ = obj.K_prime;
+            
+            if BG_ == 1
                 K_b = 22;
-            elseif obj.BG == 2
+            elseif BG_ == 2
                 % TS38.212 uses B rather than K_prime for the comparisons
                 % below, but both ways give the same answer in all cases
-                if obj.K_prime > 640
+                if K_prime_ > 640
                     K_b = 10;
-                elseif obj.K_prime > 560
+                elseif K_prime_ > 560
                     K_b = 9;
-                elseif obj.K_prime > 192
+                elseif K_prime_ > 192
                     K_b = 8;
                 else
                     K_b = 6;
@@ -398,10 +412,13 @@ classdef NRLDPC < matlab.System
         
         % The calculation of K is given in Section 5.2.2 of TS38.212.
         function K = get.K(obj)
-            if obj.BG == 1
-                K = obj.Z_c*22;
-            elseif obj.BG == 2
-                K = obj.Z_c*10;
+            BG_ = obj.BG;
+            Z_c_ = obj.Z_c;
+            
+            if BG_ == 1
+                K = Z_c_*22;
+            elseif BG_ == 2
+                K = Z_c_*10;
             else
                 error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of BG are 1 and 2.');
             end
@@ -424,10 +441,13 @@ classdef NRLDPC < matlab.System
         
         % The calculation of N is given in Section 5.3.2 of TS38.212.
         function N = get.N(obj)
-            if obj.BG == 1
-                N = obj.Z_c*66;
-            elseif obj.BG == 2
-                N = obj.Z_c*50;
+            BG_ = obj.BG;
+            Z_c_ = obj.Z_c;
+            
+            if BG_ == 1
+                N = Z_c_*66;
+            elseif BG_ == 2
+                N = Z_c_*50;
             else
                 error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of BG are 1 and 2.');
             end
@@ -449,8 +469,11 @@ classdef NRLDPC < matlab.System
         end
         
         function CBGTI_flags = get.CBGTI_flags(obj)
-            CBGTI_flags = ones(1,obj.C);
-            CBGTI_flags(obj.CBGTI(obj.CBGTI<obj.C)+1) = 0;            
+            C_ = obj.C;
+            CBGTI_ = obj.CBGTI;
+            
+            CBGTI_flags = ones(1,C_);
+            CBGTI_flags(CBGTI_(CBGTI_<C_)+1) = 0;
         end
         
         % The calculation of C_prime is given in Section 5.4.2.1 of TS38.212.
@@ -460,16 +483,23 @@ classdef NRLDPC < matlab.System
                 
         % The calculation of E_r is given in Section 5.4.2.1 of TS38.212.
         function E_r = get.E_r(obj)
+            C_ = obj.C;
+            C_prime_ = obj.C_prime;
+            CBGTI_flags_ = obj.CBGTI_flags;
+            G_ = obj.G;
+            N_L_ = obj.N_L;
+            Q_m_ = obj.Q_m;
+                        
             j=0;
-            E_r = zeros(1,obj.C);
-            for r = 0:obj.C-1
-                if obj.CBGTI_flags(r+1) == 0
+            E_r = zeros(1,C_);
+            for r = 0:C_-1
+                if CBGTI_flags_(r+1) == 0
                     E_r(r+1) = 0;
                 else
-                    if j <= obj.C_prime-mod(obj.G/(obj.N_L*obj.Q_m),obj.C_prime)-1
-                        E_r(r+1) = obj.N_L*obj.Q_m*floor(obj.G/(obj.N_L*obj.Q_m*obj.C_prime));
+                    if j <= C_prime_-mod(G_/(N_L_*Q_m_),C_prime_)-1
+                        E_r(r+1) = N_L_*Q_m_*floor(G_/(N_L_*Q_m_*C_prime_));
                     else
-                        E_r(r+1) = obj.N_L*obj.Q_m*ceil(obj.G/(obj.N_L*obj.Q_m*obj.C_prime));
+                        E_r(r+1) = N_L_*Q_m_*ceil(G_/(N_L_*Q_m_*C_prime_));
                     end
                     j = j + 1;
                 end
@@ -478,27 +508,32 @@ classdef NRLDPC < matlab.System
         
         % The calculation of k_0 is given in Table 5.4.2.1-2 of TS38.212.
         function k_0 = get.k_0(obj)
-            if obj.BG == 1
-                if obj.rv_id == 0
+            BG_ = obj.BG;
+            rv_id_ = obj.rv_id;
+            N_cb_ = obj.N_cb;
+            Z_c_ = obj.Z_c;
+            
+            if BG_ == 1
+                if rv_id_ == 0
                     k_0 = 0;
-                elseif obj.rv_id == 1
-                    k_0 = floor((17*obj.N_cb)/(66*obj.Z_c))*obj.Z_c;
-                elseif obj.rv_id == 2
-                    k_0 = floor((33*obj.N_cb)/(66*obj.Z_c))*obj.Z_c;
-                elseif obj.rv_id == 3
-                    k_0 = floor((56*obj.N_cb)/(66*obj.Z_c))*obj.Z_c;
+                elseif rv_id_ == 1
+                    k_0 = floor((17*N_cb_)/(66*Z_c_))*Z_c_;
+                elseif rv_id_ == 2
+                    k_0 = floor((33*N_cb_)/(66*Z_c_))*Z_c_;
+                elseif rv_id_ == 3
+                    k_0 = floor((56*N_cb_)/(66*Z_c_))*Z_c_;
                 else
                     error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of rv_id are 0, 1, 2 and 3.')
                 end
-            elseif obj.BG == 2
-                if obj.rv_id == 0
+            elseif BG_ == 2
+                if rv_id_ == 0
                     k_0 = 0;
-                elseif obj.rv_id == 1
-                    k_0 = floor((13*obj.N_cb)/(50*obj.Z_c))*obj.Z_c;
-                elseif obj.rv_id == 2
-                    k_0 = floor((25*obj.N_cb)/(50*obj.Z_c))*obj.Z_c;
-                elseif obj.rv_id == 3
-                    k_0 = floor((43*obj.N_cb)/(50*obj.Z_c))*obj.Z_c;
+                elseif rv_id_ == 1
+                    k_0 = floor((13*N_cb_)/(50*Z_c_))*Z_c_;
+                elseif rv_id_ == 2
+                    k_0 = floor((25*N_cb_)/(50*Z_c_))*Z_c_;
+                elseif rv_id_ == 3
+                    k_0 = floor((43*N_cb_)/(50*Z_c_))*Z_c_;
                 else
                     error('ldpc_3gpp_matlab:UnsupportedParameters','Valid values of rv_id are 0, 1, 2 and 3.')
                 end
